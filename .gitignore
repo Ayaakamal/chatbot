@@ -1,0 +1,28 @@
+# Environment variables (contains API keys)
+.env
+
+# Virtual environments
+.venv312/
+.venv314/
+venv/
+env/
+
+# ChromaDB vector database
+chroma_db/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+server.log
+*.log
+
+# IDE
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
