@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>نظام المشتريات</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ══════════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════════ */
+    #sidebar {
+      width: 64px;
+      background: #0a3438;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 0;
+      gap: 8px;
+      flex-shrink: 0;
+      z-index: 100;
+      box-shadow: 2px 0 10px rgba(0,0,0,.15);
+    }
+    .sidebar-logo {
+      font-size: 1.4rem;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+    .sidebar-item {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: rgba(255,255,255,.55);
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+    }
+    .sidebar-item:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .sidebar-item.active { background: rgba(255,255,255,.18); color: #fff; }
+    .sidebar-item .tooltip {
+      position: absolute;
+      right: calc(100% + 10px);
+      background: #1f2937;
+      color: #fff;
+      font-size: .72rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .15s;
+    }
+    .sidebar-item:hover .tooltip { opacity: 1; }
+    #sidebar-chat-btn .notif {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 8px; height: 8px;
+      background: #4ade80;
+      border-radius: 50%;
+      border: 2px solid #145055;
+    }
+
+    /* ══════════════════════════════════════
+       FLOATING CHAT WIDGET
+    ══════════════════════════════════════ */
+    #fw-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 76px;
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: #145055;
+      color: #fff;
+      font-size: 1.4rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(30,58,95,.45);
+      z-index: 300;
+      transition: transform .2s, box-shadow .2s;
+      user-select: none;
+    }
+    #fw-btn:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(30,58,95,.55); }
+    #fw-widget {
+      position: fixed;
+      bottom: 82px;
+      left: 76px;
+      width: 370px;
+      height: 520px;
+      background: #f8fafc;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      display: flex; flex-direction: column;
+      z-index: 299;
+      overflow: hidden;
+      transform: scale(.92) translateY(16px);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform .25s cubic-bezier(.4,0,.2,1), opacity .25s;
+    }
+    #fw-widget.open {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+      pointer-events: all;
+    }
+    .fw-header {
+      background: #145055;
+      color: #fff;
+      padding: 12px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .fw-header-left { display: flex; align-items: center; gap: 9px; }
+    .fw-avatar {
+      width: 34px; height: 34px;
+      background: rgba(255,255,255,.2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .fw-title { font-size: .9rem; font-weight: 700; }
+    .fw-sub { font-size: .7rem; opacity: .8; display: flex; align-items: center; gap: 4px; }
+    #fw-dot { display: inline-block; width: 6px; height: 6px; background: #f87171; border-radius: 50%; transition: background .3s; }
+    #fw-dot.on { background: #4ade80; }
+    .fw-actions { display: flex; gap: 6px; }
+    .fw-hbtn {
+      background: rgba(255,255,255,.15); border: none; color: #fff;
+      border-radius: 7px; padding: 5px 8px; cursor: pointer;
+      font-size: .78rem; transition: background .15s; font-family: inherit;
+    }
+    .fw-hbtn:hover { background: rgba(255,255,255,.28); }
+    /* FW History Panel */
+    .fw-history {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #fff;
+      z-index: 10;
+      flex-direction: column;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .fw-history.open { display: flex; }
+    .fw-history-header {
+      background: #145055;
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .82rem;
+      font-weight: 600;
+    }
+    .fw-history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .fw-history-list::-webkit-scrollbar { width: 3px; }
+    .fw-history-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .fw-history-item {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .fw-history-item:hover { background: #e0f4f4; border-color: #80c9c4; }
+    .fw-history-item .fwh-title { font-size: .78rem; font-weight: 600; color: #145055; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fw-history-item .fwh-meta { font-size: .65rem; color: #9ca3af; display: flex; justify-content: space-between; align-items: center; }
+    .fw-history-item .fwh-del { background: none; border: none; color: #ef4444; cursor: pointer; font-size: .68rem; padding: 1px 4px; border-radius: 4px; font-family: inherit; }
+    .fw-history-item .fwh-del:hover { background: #fee2e2; }
+    .fw-tabs {
+      display: flex; background: #fff;
+      border-bottom: 2px solid #e5e7eb; flex-shrink: 0;
+    }
+    .fw-tab {
+      flex: 1; padding: 9px 6px; font-size: .8rem; color: #6b7280;
+      cursor: pointer; border-bottom: 3px solid transparent;
+      margin-bottom: -2px; transition: all .15s; text-align: center; font-family: inherit;
+    }
+    .fw-tab.active { color: #145055; border-bottom-color: #145055; font-weight: 700; }
+    .fw-body { flex: 1; display: flex; overflow: hidden; }
+    .fw-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .fw-panel.active { display: flex; }
+    .fw-messages {
+      flex: 1; overflow-y: auto; padding: 14px;
+      display: flex; flex-direction: column; gap: 9px; scroll-behavior: smooth;
+    }
+    .fw-messages::-webkit-scrollbar { width: 3px; }
+    .fw-messages::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .fw-msg {
+      max-width: 80%; padding: 9px 12px; border-radius: 14px;
+      font-size: .82rem; line-height: 1.55; word-break: break-word;
+      animation: pop .2s ease;
+    }
+    .fw-msg.user { background: #145055; color: #fff; align-self: flex-start; border-bottom-right-radius: 3px; }
+    .fw-msg.bot { background: #fff; color: #1f2937; align-self: flex-end; border-bottom-left-radius: 3px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .fw-msg.bot .fw-meta { font-size: .65rem; color: #9ca3af; margin-top: 5px; direction: ltr; }
+    .fw-tool-badge {
+      display: inline-block; background: #ede9fe; color: #6d28d9;
+      font-size: .63rem; padding: 2px 7px; border-radius: 999px; margin-top: 5px;
+    }
+    .fw-suggestions {
+      display: flex; gap: 6px; padding: 6px 14px 2px; flex-wrap: wrap; flex-shrink: 0; background: #f8fafc;
+    }
+    .fw-suggestion {
+      background: #e8f5f4; color: #145055; border: none;
+      border-radius: 999px; padding: 4px 12px; font-size: .75rem;
+      cursor: pointer; transition: background .15s; font-family: inherit;
+    }
+    .fw-suggestion:hover { background: #d0dff0; }
+    .fw-input-bar {
+      display: flex; gap: 6px; padding: 10px 12px;
+      background: #fff; border-top: 1px solid #e5e7eb; flex-shrink: 0;
+    }
+    .fw-input-bar textarea {
+      flex: 1; border: 1.5px solid #e5e7eb; border-radius: 10px;
+      padding: 8px 10px; font-size: .82rem; font-family: inherit;
+      resize: none; outline: none; background: #f9fafb; line-height: 1.4;
+    }
+    .fw-input-bar textarea:focus { border-color: #145055; }
+    .fw-send-btn {
+      background: #145055; color: #fff; border: none;
+      border-radius: 10px; padding: 0 14px; cursor: pointer;
+      font-size: .82rem; font-family: inherit; transition: background .15s;
+    }
+    .fw-send-btn:hover { background: #0d3a3e; }
+    .fw-send-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    /* ══════════════════════════════════════
+       MAIN CONTENT
+    ══════════════════════════════════════ */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: margin .3s ease;
+    }
+    .erp-header {
+      background: #fff;
+      color: #145055;
+      padding: 10px 28px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+    }
+    .erp-header-logo {
+      height: 44px;
+      width: auto;
+      object-fit: contain;
+    }
+    .erp-content {
+      padding: 32px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .erp-content h2 { margin-bottom: 12px; color: #145055; font-size: 1.1rem; }
+    .erp-content p  { color: #6b7280; font-size: .9rem; line-height: 1.8; }
+
+    /* ══════════════════════════════════════
+       CHAT FULL PAGE (slides in from right)
+    ══════════════════════════════════════ */
+    #chat-page {
+      position: fixed;
+      top: 0; bottom: 0;
+      right: -100%;
+      width: calc(100% - 64px);
+      background: #f8fafc;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      transition: right .3s cubic-bezier(.4,0,.2,1);
+      box-shadow: -4px 0 20px rgba(0,0,0,.12);
+    }
+    #chat-page.open { right: 0; }
+
+    /* Chat page header */
+    .cp-header {
+      background: #145055;
+      color: #fff;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .cp-header-left { display: flex; align-items: center; gap: 12px; }
+    .cp-avatar {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,.2);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+    }
+    .cp-title { font-size: 1rem; font-weight: 700; }
+    .cp-sub { font-size: .75rem; opacity: .8; display: flex; align-items: center; gap: 5px; }
+    #online-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      background: #f87171;
+      border-radius: 50%;
+      transition: background .3s;
+    }
+    #online-dot.on { background: #4ade80; }
+    .cp-actions { display: flex; gap: 8px; }
+    .hdr-btn {
+      background: rgba(255,255,255,.15);
+      border: none; color: #fff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: .82rem;
+      transition: background .15s;
+      font-family: inherit;
+    }
+    .hdr-btn:hover { background: rgba(255,255,255,.28); }
+
+    /* Tabs */
+    .chat-tabs {
+      display: flex;
+      background: #fff;
+      border-bottom: 2px solid #e5e7eb;
+      flex-shrink: 0;
+      padding: 0 24px;
+    }
+    .chat-tab {
+      padding: 12px 20px;
+      font-size: .88rem;
+      color: #6b7280;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all .15s;
+      font-family: inherit;
+    }
+    .chat-tab.active { color: #145055; border-bottom-color: #145055; font-weight: 700; }
+
+    /* Body area */
+    .chat-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Panels */
+    .chat-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .chat-panel.active { display: flex; }
+
+    /* Messages */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+    .msg {
+      max-width: 65%;
+      padding: 11px 15px;
+      border-radius: 16px;
+      font-size: .88rem;
+      line-height: 1.6;
+      word-break: break-word;
+      animation: pop .2s ease;
+    }
+    @keyframes pop {
+      from { opacity:0; transform:scale(.96) translateY(5px); }
+      to   { opacity:1; transform:none; }
+    }
+    .msg.user {
+      background: #145055;
+      color: #fff;
+      align-self: flex-start;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.bot {
+      background: #fff;
+      color: #1f2937;
+      align-self: flex-end;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .msg.bot .meta {
+      font-size: .7rem;
+      color: #9ca3af;
+      margin-top: 6px;
+      text-align: left;
+      direction: ltr;
+    }
+    /* Markdown table styles */
+    .msg table, .fw-msg table {
+      border-collapse: collapse;
+      min-width: 100%;
+      margin: 8px 0;
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+    .msg .md-table-wrap, .fw-msg .md-table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      margin: 8px 0;
+    }
+    .msg table th, .fw-msg table th {
+      background: #145055;
+      color: #fff;
+      padding: 8px 14px;
+      text-align: right;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .msg table td, .fw-msg table td {
+      padding: 7px 14px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .msg table tr:last-child td, .fw-msg table tr:last-child td { border-bottom: none; }
+    .msg table tr:nth-child(even), .fw-msg table tr:nth-child(even) { background: #f0f9f9; }
+    .msg table tr:hover, .fw-msg table tr:hover { background: #e0f4f4; }
+    .msg p, .fw-msg p { margin: 4px 0; }
+    .msg ul, .fw-msg ul, .msg ol, .fw-msg ol { padding-right: 20px; margin: 4px 0; }
+    .msg strong, .fw-msg strong { color: #145055; }
+    .tool-badge {
+      display: inline-block;
+      background: #ede9fe;
+      color: #6d28d9;
+      font-size: .68rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-top: 6px;
+    }
+    .typing-dots span {
+      display: inline-block;
+      width: 7px; height: 7px;
+      background: #9ca3af;
+      border-radius: 50%;
+      margin: 0 2px;
+      animation: bounce .8s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: .15s; }
+    .typing-dots span:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce {
+      0%,80%,100% { transform:translateY(0); }
+      40% { transform:translateY(-6px); }
+    }
+
+    /* Suggestions */
+    .suggestions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 24px;
+      background: #fff;
+      border-top: 1px solid #f3f4f6;
+      flex-shrink: 0;
+    }
+    .suggestion {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: .78rem;
+      cursor: pointer;
+      color: #374151;
+      transition: all .15s;
+      font-family: inherit;
+    }
+    .suggestion:hover { background: #e0f4f4; border-color: #80c9c4; color: #145055; }
+
+    /* Input bar */
+    .input-bar {
+      padding: 14px 24px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      border-top: 1px solid #e5e7eb;
+      background: #fff;
+      flex-shrink: 0;
+    }
+    .input-bar textarea {
+      flex: 1;
+      border: 1.5px solid #d1d5db;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: .88rem;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      max-height: 110px;
+      direction: rtl;
+      transition: border-color .2s;
+      background: #f9fafb;
+    }
+    .input-bar textarea:focus { border-color: #DA5B30; background: #fff; }
+    .send-btn {
+      background: #145055;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 22px;
+      font-size: .88rem;
+      cursor: pointer;
+      transition: background .2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+      font-family: inherit;
+    }
+    .send-btn:hover { background: #DA5B30; }
+    .send-btn:disabled { background: #80c9c4; cursor: not-allowed; }
+
+    /* ── History panel ── */
+    #history-panel {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #fff;
+      z-index: 10;
+      display: none;
+      flex-direction: column;
+    }
+    #history-panel.open { display: flex; }
+    .history-header {
+      background: #145055;
+      color: #fff;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .9rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .history-list::-webkit-scrollbar { width: 4px; }
+    .history-list::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+    .history-item {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .history-item:hover { background: #e0f4f4; border-color: #80c9c4; }
+    .history-item .h-title { font-size: .85rem; font-weight: 600; color: #145055; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-item .h-meta { font-size: .72rem; color: #9ca3af; display: flex; justify-content: space-between; align-items: center; }
+    .history-item .h-del { background: none; border: none; color: #ef4444; cursor: pointer; font-size: .78rem; padding: 2px 6px; border-radius: 4px; font-family: inherit; }
+    .history-item .h-del:hover { background: #fee2e2; }
+    .history-empty { text-align: center; color: #9ca3af; font-size: .85rem; margin-top: 60px; }
+
+    /* ══════════════════════════════════════
+       DASHBOARD
+    ══════════════════════════════════════ */
+    #dashboard-page {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow-y: auto;
+      background: #f0f2f5;
+    }
+    #dashboard-page.open { display: flex; }
+    .dash-header {
+      background: #fff;
+      padding: 20px 32px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dash-header h2 { color: #145055; font-size: 1.3rem; margin: 0; }
+    .dash-refresh {
+      background: #145055; color: #fff; border: none; padding: 8px 20px;
+      border-radius: 10px; cursor: pointer; font-family: inherit; font-size: .82rem; font-weight: 600;
+      transition: background .2s;
+    }
+    .dash-refresh:hover { background: #0d3a3e; }
+    .dash-body { padding: 24px 32px; display: flex; flex-direction: column; gap: 24px; }
+
+    /* Stat cards row */
+    .stat-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 22px 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-right: 4px solid #145055;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.1); }
+    .stat-card:nth-child(2) { border-right-color: #DA5B30; }
+    .stat-card:nth-child(3) { border-right-color: #10b981; }
+    .stat-card:nth-child(4) { border-right-color: #8b5cf6; }
+    .stat-card:nth-child(5) { border-right-color: #f59e0b; }
+    .stat-card:nth-child(6) { border-right-color: #ec4899; }
+    .stat-label { font-size: .78rem; color: #6b7280; font-weight: 600; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; color: #145055; line-height: 1; }
+    .stat-sub { font-size: .72rem; color: #9ca3af; }
+
+    /* Chart containers */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+    .chart-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    }
+    .chart-box h3 {
+      font-size: .95rem;
+      color: #145055;
+      margin: 0 0 16px 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .chart-box canvas { max-height: 280px; }
+
+    /* Recent table */
+    .dash-table-wrap {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      overflow-x: auto;
+    }
+    .dash-table-wrap h3 {
+      font-size: .95rem; color: #145055; margin: 0 0 16px 0;
+      padding-bottom: 10px; border-bottom: 1px solid #f0f0f0;
+    }
+    .dash-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+    .dash-table th {
+      background: #f8fafa;
+      color: #145055;
+      padding: 10px 14px;
+      text-align: right;
+      font-weight: 700;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .dash-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      text-align: right;
+      color: #374151;
+    }
+    .dash-table tr:hover td { background: #f0f9f9; }
+    .mode-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 600;
+    }
+    .mode-badge.agent { background: #e0f4f4; color: #145055; }
+    .mode-badge.qa { background: #fff3e0; color: #DA5B30; }
+    .success-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+    .success-dot.ok { background: #10b981; }
+    .success-dot.fail { background: #ef4444; }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<div id="sidebar">
+  <div class="sidebar-logo">🏢</div>
+
+  <div class="sidebar-item active" onclick="goHome()" title="الرئيسية">
+    🏠
+    <span class="tooltip">الرئيسية</span>
+  </div>
+
+  <div class="sidebar-item" id="sidebar-chat-btn" onclick="openChat()" title="المساعد الذكي">
+    🤖
+    <span class="notif"></span>
+    <span class="tooltip">المساعد الذكي</span>
+  </div>
+
+  <div class="sidebar-item" onclick="" title="الموردين">
+    🏭
+    <span class="tooltip">الموردين</span>
+  </div>
+
+  <div class="sidebar-item" onclick="" title="أوامر التوريد">
+    📦
+    <span class="tooltip">أوامر التوريد</span>
+  </div>
+
+  <div class="sidebar-item" onclick="" title="الفواتير">
+    📄
+    <span class="tooltip">الفواتير</span>
+  </div>
+
+  <div class="sidebar-item" id="sidebar-dash-btn" onclick="openDashboard()" title="لوحة التحليلات">
+    📊
+    <span class="tooltip">لوحة التحليلات</span>
+  </div>
+</div>
+
+<!-- ── Main ERP Page ── -->
+<div id="main">
+  <div class="erp-header">
+    <img src="./logo.png" alt="MasterCode" class="erp-header-logo" onerror="this.style.display='none'">
+    <span>🏢 نظام إدارة المشتريات</span>
+  </div>
+  <div class="erp-content">
+    <h2>لوحة التحكم</h2>
+    <p>هذه صفحة تجريبية تحاكي واجهة نظام ERP.<br>اضغط على أيقونة 🤖 في الشريط الجانبي للفتح المساعد الذكي.</p>
+  </div>
+</div>
+
+<!-- ══ Floating Chat Widget ══ -->
+<div id="fw-btn" onclick="toggleFW()" title="المساعد الذكي">🤖</div>
+
+<div id="fw-widget">
+  <!-- Header -->
+  <div class="fw-header">
+    <div class="fw-header-left">
+      <div class="fw-avatar">🤖</div>
+      <div>
+        <div class="fw-title">المساعد الذكي</div>
+        <div class="fw-sub"><span id="fw-dot"></span><span id="fw-status">غير متصل</span></div>
+      </div>
+    </div>
+    <div class="fw-actions">
+      <button class="fw-hbtn" onclick="openFWHistory()" title="السابقة">🕐</button>
+      <button class="fw-hbtn" onclick="clearFW()" title="مسح">🗑</button>
+      <button class="fw-hbtn" onclick="toggleFW()">✕ إغلاق</button>
+    </div>
+  </div>
+
+  <!-- FW History Panel -->
+  <div class="fw-history" id="fw-history-panel">
+    <div class="fw-history-header">
+      <span>🕐 المحادثات السابقة</span>
+      <button class="fw-hbtn" onclick="closeFWHistory()">✕ رجوع</button>
+    </div>
+    <div class="fw-history-list" id="fw-history-list"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="fw-tabs">
+    <div class="fw-tab active" onclick="switchFWTab('agent')">🤖 المساعد الذكي</div>
+    <div class="fw-tab" onclick="switchFWTab('qa')">💬 سؤال وجواب</div>
+  </div>
+
+  <!-- Body -->
+  <div class="fw-body">
+    <!-- Agent panel -->
+    <div class="fw-panel active" id="fw-panel-agent">
+      <div class="fw-messages" id="fw-agent-msgs">
+        <div class="fw-msg bot">أنا مساعد المشتريات الذكي! يمكنني مساعدتك في إنشاء أوامر التوريد، عرض الموردين، ومتابعة الفواتير.</div>
+      </div>
+      <div class="fw-suggestions">
+        <button class="fw-suggestion" onclick="sendFWSuggestion('agent','اعرضلي كل الموردين')">الموردين</button>
+        <button class="fw-suggestion" onclick="sendFWSuggestion('agent','اعمل امر توريد')">امر توريد</button>
+        <button class="fw-suggestion" onclick="sendFWSuggestion('agent','اعرض الفواتير المتأخرة')">فواتير متأخرة</button>
+      </div>
+      <div class="fw-input-bar">
+        <textarea id="fw-agent-input" rows="1" placeholder="اكتب طلبك..." onkeydown="handleFWKey(event,'agent')" oninput="fwResize(this)"></textarea>
+        <button class="fw-send-btn" id="fw-agent-btn" onclick="sendFWAgent()">إرسال</button>
+      </div>
+    </div>
+
+    <!-- QA panel -->
+    <div class="fw-panel" id="fw-panel-qa">
+      <div class="fw-messages" id="fw-qa-msgs">
+        <div class="fw-msg bot">مرحباً! اسألني عن سياسات الشراء، الشحن، الموردين، أو أي موضوع في وثائق الشركة.</div>
+      </div>
+      <div class="fw-input-bar">
+        <textarea id="fw-qa-input" rows="1" placeholder="اكتب سؤالك..." onkeydown="handleFWKey(event,'qa')" oninput="fwResize(this)"></textarea>
+        <button class="fw-send-btn" id="fw-qa-btn" onclick="sendFWQA()">إرسال</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Dashboard Page ══ -->
+<div id="dashboard-page">
+  <div class="dash-header">
+    <h2>📊 لوحة التحليلات</h2>
+    <button class="dash-refresh" onclick="loadDashboard()">🔄 تحديث</button>
+  </div>
+  <div class="dash-body">
+    <!-- Stat Cards -->
+    <div class="stat-cards">
+      <div class="stat-card">
+        <span class="stat-label">إجمالي الطلبات</span>
+        <span class="stat-value" id="d-total">—</span>
+        <span class="stat-sub">منذ البداية</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">طلبات اليوم</span>
+        <span class="stat-value" id="d-today">—</span>
+        <span class="stat-sub" id="d-today-date"></span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">متوسط وقت الاستجابة</span>
+        <span class="stat-value" id="d-avg-ms">—</span>
+        <span class="stat-sub">ملي ثانية</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">نسبة النجاح</span>
+        <span class="stat-value" id="d-success">—</span>
+        <span class="stat-sub">من إجمالي الطلبات</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">طلبات المساعد الذكي</span>
+        <span class="stat-value" id="d-agent">—</span>
+        <span class="stat-sub">Agent</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">طلبات سؤال وجواب</span>
+        <span class="stat-value" id="d-qa">—</span>
+        <span class="stat-sub">Q&A</span>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="chart-grid">
+      <div class="chart-box">
+        <h3>📈 الطلبات خلال آخر 30 يوم</h3>
+        <canvas id="chart-timeline"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>🔧 استخدام الأدوات</h3>
+        <canvas id="chart-tools"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>📊 توزيع الطلبات</h3>
+        <canvas id="chart-modes"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>❓ الأسئلة الأكثر تكراراً</h3>
+        <canvas id="chart-top-q"></canvas>
+      </div>
+    </div>
+
+    <!-- Recent requests table -->
+    <div class="dash-table-wrap">
+      <h3>🕐 آخر الطلبات</h3>
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>الوقت</th>
+            <th>النوع</th>
+            <th>السؤال</th>
+            <th>الاستجابة</th>
+            <th>الأدوات</th>
+            <th>الحالة</th>
+          </tr>
+        </thead>
+        <tbody id="d-recent-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Chat Full Page ══ -->
+<div id="chat-page">
+
+  <!-- Header -->
+  <div class="cp-header">
+    <div class="cp-header-left">
+      <div class="cp-avatar">🤖</div>
+      <div>
+        <div class="cp-title">المساعد الذكي</div>
+        <div class="cp-sub">
+          <span id="online-dot"></span>
+          <span id="status-text">جاري الاتصال...</span>
+        </div>
+      </div>
+    </div>
+    <div class="cp-actions">
+      <button class="hdr-btn" onclick="openHistory()">🕐 السابقة</button>
+      <button class="hdr-btn" onclick="clearChat()">🗑 مسح</button>
+      <button class="hdr-btn" onclick="closeChat()">✕ إغلاق</button>
+    </div>
+  </div>
+
+  <!-- History Panel -->
+  <div id="history-panel">
+    <div class="history-header">
+      <span>🕐 المحادثات السابقة</span>
+      <button class="hdr-btn" onclick="closeHistory()">✕ رجوع</button>
+    </div>
+    <div class="history-list" id="history-list"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="chat-tabs">
+    <div class="chat-tab active" onclick="switchTab('qa')">💬 سؤال وجواب</div>
+    <div class="chat-tab" onclick="switchTab('agent')">🤖 المساعد الذكي</div>
+  </div>
+
+  <!-- Body -->
+  <div class="chat-body">
+
+    <!-- QA Panel -->
+    <div class="chat-panel active" id="panel-qa">
+      <div class="messages" id="qa-messages">
+        <div class="msg bot">مرحباً! اسألني عن سياسات الشراء، الشحن، الموردين، أو أي موضوع في وثائق الشركة.</div>
+      </div>
+      <div class="suggestions">
+        <span class="suggestion" onclick="sendSuggestion('qa','ما هي سياسة الدفع؟')">سياسة الدفع</span>
+        <span class="suggestion" onclick="sendSuggestion('qa','اشرح دورة المشتريات')">دورة المشتريات</span>
+        <span class="suggestion" onclick="sendSuggestion('qa','شروط الموردين')">شروط الموردين</span>
+        <span class="suggestion" onclick="sendSuggestion('qa','كيف يتم الشحن؟')">الشحن</span>
+      </div>
+      <div class="input-bar">
+        <textarea id="qa-input" rows="1" placeholder="اكتب سؤالك..." onkeydown="handleKey(event,'qa')" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="qa-btn" onclick="sendQA()">إرسال</button>
+      </div>
+    </div>
+
+    <!-- Agent Panel -->
+    <div class="chat-panel" id="panel-agent">
+      <div class="messages" id="agent-messages">
+        <div class="msg bot">أنا مساعد المشتريات الذكي! يمكنني مساعدتك في إنشاء أوامر التوريد، عرض الموردين، ومتابعة الفواتير.</div>
+      </div>
+      <div class="suggestions">
+        <span class="suggestion" onclick="sendSuggestion('agent','اعرضلي كل الموردين')">الموردين</span>
+        <span class="suggestion" onclick="sendSuggestion('agent','اعمل امر توريد')">امر توريد</span>
+        <span class="suggestion" onclick="sendSuggestion('agent','اعرض الفواتير المتأخرة')">فواتير متأخرة</span>
+        <span class="suggestion" onclick="sendSuggestion('agent','كم عدد الموردين؟')">عدد الموردين</span>
+      </div>
+      <div class="input-bar">
+        <textarea id="agent-input" rows="1" placeholder="اكتب طلبك..." onkeydown="handleKey(event,'agent')" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="agent-btn" onclick="sendAgent()">إرسال</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const BASE = 'http://localhost:8002';
+  const agentHistory = [];
+  let chatOpen = false;
+
+  // One-time cleanup of old broken history
+  if (!localStorage.getItem('history_v2_cleared')) {
+    localStorage.removeItem('chat_history');
+    localStorage.setItem('history_v2_cleared', '1');
+  }
+
+  // ── Open / Close ─────────────────────────────────────
+  function openChat() {
+    chatOpen = true;
+    document.getElementById('chat-page').classList.add('open');
+    document.getElementById('sidebar-chat-btn').classList.add('active');
+    document.getElementById('qa-input').focus();
+    checkHealth();
+  }
+
+  function closeChat() {
+    saveCurrentConvo();
+    chatOpen = false;
+    document.getElementById('chat-page').classList.remove('open');
+    document.getElementById('sidebar-chat-btn').classList.remove('active');
+  }
+
+  function goHome() {
+    closeChat();
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    document.querySelector('.sidebar-item:first-of-type').classList.add('active');
+  }
+
+  // ── Tab switch ───────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.chat-tab').forEach((t, i) =>
+      t.classList.toggle('active', ['qa','agent'][i] === name));
+    document.querySelectorAll('.chat-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    document.getElementById(name + '-input').focus();
+  }
+
+  // ── Health check ─────────────────────────────────────
+  async function checkHealth() {
+    try {
+      const r = await fetch(BASE + '/health');
+      document.getElementById('online-dot').className = r.ok ? 'on' : '';
+      document.getElementById('status-text').textContent = r.ok ? 'متصل' : 'غير متصل';
+    } catch {
+      document.getElementById('online-dot').className = '';
+      document.getElementById('status-text').textContent = 'غير متصل';
+    }
+  }
+  checkHealth();
+
+  // ── Clear chat ───────────────────────────────────────
+  function clearChat() {
+    saveCurrentConvo();
+    ['qa-messages','agent-messages'].forEach(id => {
+      const el = document.getElementById(id);
+      el.innerHTML = '';
+      const msg = document.createElement('div');
+      msg.className = 'msg bot';
+      msg.textContent = id === 'qa-messages'
+        ? 'مرحباً! اسألني عن سياسات الشراء، الشحن، الموردين، أو أي موضوع في وثائق الشركة.'
+        : 'أنا مساعد المشتريات الذكي! يمكنني مساعدتك في إنشاء أوامر التوريد، عرض الموردين، ومتابعة الفواتير.';
+      el.appendChild(msg);
+    });
+    agentHistory.length = 0;
+  }
+
+  // ── History ──────────────────────────────────────────
+  function getSavedConvos() {
+    return JSON.parse(localStorage.getItem('chat_history') || '[]');
+  }
+  // Track active conversation IDs so we update instead of duplicating
+  let activeConvoId = { agent: null, qa: null };
+
+  function saveCurrentConvo() {
+    saveTab('agent-messages', 'agent');
+    saveTab('qa-messages', 'qa');
+  }
+
+  function saveTab(containerId, mode) {
+    try {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const msgs = container.querySelectorAll('.msg');
+      if (msgs.length <= 1) return;
+      const lines = [];
+      msgs.forEach(function(m) {
+        if (!m.querySelector('.typing-dots')) {
+          var role = m.classList.contains('user') ? 'user' : 'bot';
+          lines.push({ role: role, text: m.innerText.trim() });
+        }
+      });
+      if (!lines.some(function(l) { return l.role === 'user'; })) return;
+      var convos = getSavedConvos();
+      var title = '';
+      for (var i = 0; i < lines.length; i++) {
+        if (lines[i].role === 'user') { title = lines[i].text.slice(0, 40); break; }
+      }
+      if (!title) title = 'محادثة';
+
+      // Update existing active convo or create new
+      if (activeConvoId[mode]) {
+        var idx = convos.findIndex(function(c) { return c.id === activeConvoId[mode]; });
+        if (idx !== -1) {
+          convos[idx].lines = lines;
+          convos[idx].title = title;
+          localStorage.setItem('chat_history', JSON.stringify(convos));
+          return;
+        }
+      }
+      var id = Date.now();
+      activeConvoId[mode] = id;
+      convos.unshift({ id: id, title: title, mode: mode, time: new Date().toLocaleString('ar'), lines: lines });
+      localStorage.setItem('chat_history', JSON.stringify(convos.slice(0, 20)));
+    } catch(e) {
+      console.error('saveTab error:', e);
+    }
+  }
+  function openHistory() {
+    const panel = document.getElementById('history-panel');
+    const list  = document.getElementById('history-list');
+    const convos = getSavedConvos();
+    panel.classList.add('open');
+    if (!convos.length) { list.innerHTML = '<div class="history-empty">لا توجد محادثات سابقة</div>'; return; }
+    list.innerHTML = convos.map(c => `
+      <div class="history-item" onclick="restoreConvo(${c.id})">
+        <div class="h-title">${c.title}</div>
+        <div class="h-meta">
+          <span>${c.time}</span>
+          <button class="h-del" onclick="event.stopPropagation();deleteConvo(${c.id})">🗑 حذف</button>
+        </div>
+      </div>`).join('');
+  }
+  function closeHistory() { document.getElementById('history-panel').classList.remove('open'); }
+  function deleteConvo(id) {
+    localStorage.setItem('chat_history', JSON.stringify(getSavedConvos().filter(c => c.id !== id)));
+    openHistory();
+  }
+  function restoreConvo(id) {
+    const convo = getSavedConvos().find(c => c.id === id);
+    if (!convo) return;
+    closeHistory(); switchTab('agent');
+    const msgs = document.getElementById('agent-messages');
+    msgs.innerHTML = '';
+    convo.lines.forEach(l => appendMsg(msgs, l.text, l.role));
+    agentHistory.length = 0;
+    convo.lines.forEach(l => agentHistory.push({ role: l.role === 'user' ? 'user' : 'assistant', content: l.text }));
+  }
+
+  // ── Helpers ──────────────────────────────────────────
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+  }
+  function handleKey(e, mode) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); mode === 'qa' ? sendQA() : sendAgent(); }
+  }
+  function sendSuggestion(mode, text) {
+    if (!chatOpen) openChat();
+    switchTab(mode);
+    const input = document.getElementById(mode + '-input');
+    input.value = text; autoResize(input);
+    mode === 'qa' ? sendQA() : sendAgent();
+  }
+  function renderMarkdown(text) {
+    const html = marked.parse(text);
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    tmp.querySelectorAll('table').forEach(t => {
+      const wrap = document.createElement('div');
+      wrap.className = 'md-table-wrap';
+      t.parentNode.insertBefore(wrap, t);
+      wrap.appendChild(t);
+    });
+    return tmp.innerHTML;
+  }
+
+  function appendMsg(container, text, type) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + type;
+    if (type === 'bot' && typeof marked !== 'undefined') {
+      div.innerHTML = renderMarkdown(text);
+    } else {
+      div.innerHTML = text.replace(/\n/g, '<br>');
+    }
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return div;
+  }
+  function showTyping(container) {
+    const div = document.createElement('div');
+    div.className = 'msg bot';
+    div.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return div;
+  }
+
+  // ── QA Streaming ─────────────────────────────────────
+  async function sendQA() {
+    const input = document.getElementById('qa-input');
+    const btn   = document.getElementById('qa-btn');
+    const msgs  = document.getElementById('qa-messages');
+    const text  = input.value.trim();
+    if (!text) return;
+    appendMsg(msgs, text, 'user');
+    input.value = ''; input.style.height = 'auto';
+    btn.disabled = true;
+    const typing = showTyping(msgs);
+    let botDiv = null, buffer = '';
+    try {
+      const res = await fetch(BASE + '/ask-question/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: text, history: '', active_entity: 'Purchases' })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value).split('\n').filter(l => l.startsWith('data:'));
+        for (const line of lines) {
+          const data = JSON.parse(line.slice(5).trim());
+          if (data.token !== undefined) {
+            if (!botDiv) { typing.remove(); botDiv = appendMsg(msgs, '', 'bot'); }
+            buffer += data.token;
+            botDiv.innerHTML = buffer.replace(/\n/g, '<br>');
+            msgs.scrollTop = msgs.scrollHeight;
+          }
+          if (data.done && botDiv) {
+            const m = document.createElement('div');
+            m.className = 'meta'; m.textContent = '📄 المصدر: وثائق النظام';
+            botDiv.appendChild(m);
+            saveTab('qa-messages', 'qa');
+          }
+        }
+      }
+    } catch {
+      typing.remove();
+      appendMsg(msgs, '❌ فشل الاتصال. تأكد أن الخادم يعمل على localhost:8002', 'bot');
+    }
+    btn.disabled = false; input.focus();
+  }
+
+  // ── PDF export ───────────────────────────────────────
+  function openPOPdf(po) {
+    const items = (po.items || []).map(it => `
+      <tr>
+        <td>${it.name || it.item_id || '-'}</td>
+        <td style="text-align:center">${it.qty}</td>
+        <td style="text-align:center">${(it.unit_price || 0).toLocaleString('ar-EG')}</td>
+        <td style="text-align:center">${(it.subtotal || it.qty * it.unit_price || 0).toLocaleString('ar-EG')}</td>
+      </tr>`).join('');
+
+    const statusMap = { pending_approval:'في انتظار الموافقة', approved:'معتمد', cancelled:'ملغي', completed:'مكتمل' };
+    const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>أمر التوريد ${po.id}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cairo', sans-serif; color: #1f2937; background: #fff; padding: 32px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #145055; padding-bottom: 16px; margin-bottom: 24px; }
+  .co-name { font-size: 1.4rem; font-weight: 700; color: #145055; }
+  .doc-title { font-size: 1.1rem; font-weight: 700; color: #145055; text-align: left; }
+  .doc-id { font-size: .85rem; color: #6b7280; text-align: left; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: 8px; }
+  .meta-row { display: flex; gap: 8px; font-size: .88rem; }
+  .meta-label { font-weight: 700; color: #374151; min-width: 100px; }
+  .meta-val { color: #1f2937; }
+  .status { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: .8rem; font-weight: 700; background: #e0f4f4; color: #145055; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th { background: #145055; color: #fff; padding: 10px 12px; font-size: .85rem; }
+  td { padding: 9px 12px; font-size: .85rem; border-bottom: 1px solid #e5e7eb; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  .total-row td { font-weight: 700; background: #f0f4ff !important; font-size: .95rem; }
+  .footer { margin-top: 32px; display: flex; justify-content: space-between; font-size: .78rem; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+  .print-btn { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #145055; color: #fff; border: none; padding: 12px 32px; border-radius: 8px; font-family: inherit; font-size: 1rem; cursor: pointer; }
+  @media print { .print-btn { display: none; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="co-name">🏢 نظام المشتريات ERP</div>
+    <div style="font-size:.8rem;color:#6b7280;margin-top:4px">قسم المشتريات</div>
+  </div>
+  <div>
+    <div class="doc-title">أمر التوريد</div>
+    <div class="doc-id">${po.id}</div>
+  </div>
+</div>
+
+<div class="meta-grid">
+  <div class="meta-row"><span class="meta-label">رقم الأمر:</span><span class="meta-val">${po.id}</span></div>
+  <div class="meta-row"><span class="meta-label">الحالة:</span><span class="status">${statusMap[po.status] || po.status}</span></div>
+  <div class="meta-row"><span class="meta-label">المورد:</span><span class="meta-val">${po.supplier || '-'}</span></div>
+  <div class="meta-row"><span class="meta-label">العملة:</span><span class="meta-val">${po.currency || 'EGP'}</span></div>
+  <div class="meta-row"><span class="meta-label">تاريخ الإنشاء:</span><span class="meta-val">${po.created_at || new Date().toLocaleDateString('ar-EG')}</span></div>
+  <div class="meta-row"><span class="meta-label">الإجمالي:</span><span class="meta-val" style="font-weight:700;color:#145055">${(po.total || 0).toLocaleString('ar-EG')} ${po.currency || 'EGP'}</span></div>
+</div>
+
+<table>
+  <thead><tr><th>المنتج</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
+  <tbody>
+    ${items}
+    <tr class="total-row">
+      <td colspan="3" style="text-align:center">الإجمالي الكلي</td>
+      <td style="text-align:center">${(po.total || 0).toLocaleString('ar-EG')} ${po.currency || 'EGP'}</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="footer">
+  <span>تم الإنشاء بواسطة: نظام ERP للمشتريات</span>
+  <span>تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</span>
+</div>
+
+<button class="print-btn" onclick="window.print()">🖨 طباعة / حفظ PDF</button>
+</body></html>`;
+
+    const win = window.open('', '_blank', 'width=850,height=700');
+    win.document.write(html);
+    win.document.close();
+  }
+
+  // ── Agent ─────────────────────────────────────────────
+  async function sendAgent() {
+    const input = document.getElementById('agent-input');
+    const btn   = document.getElementById('agent-btn');
+    const msgs  = document.getElementById('agent-messages');
+    const text  = input.value.trim();
+    if (!text) return;
+    appendMsg(msgs, text, 'user');
+    input.value = ''; input.style.height = 'auto';
+    btn.disabled = true;
+    const typing = showTyping(msgs);
+    try {
+      const res  = await fetch(BASE + '/agent/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history: agentHistory.slice(-10) })
+      });
+      const data = await res.json();
+      typing.remove();
+      let answer = data.answer || 'لا يوجد رد';
+
+      // ── PDF export detection ──────────────────────────
+      const pdfMatch = answer.match(/__PDF_EXPORT__(.+?)__PDF_END__/s);
+      let displayAnswer = answer;
+      if (pdfMatch) {
+        let po = null;
+        try { po = JSON.parse(pdfMatch[1]); } catch {}
+        displayAnswer = answer.replace(/__PDF_EXPORT__.+?__PDF_END__/s, '').trim()
+          || `تم تجهيز ملف PDF لأمر التوريد ${po?.id || ''}.`;
+
+        const botDiv = appendMsg(msgs, displayAnswer, 'bot');
+        if (po) {
+          const pdfBtn = document.createElement('button');
+          pdfBtn.style.cssText = 'margin-top:10px;display:block;background:#145055;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.85rem;';
+          pdfBtn.innerHTML = '📄 فتح / طباعة PDF';
+          pdfBtn.onclick = () => openPOPdf(po);
+          botDiv.appendChild(pdfBtn);
+          openPOPdf(po);
+        }
+      } else {
+        appendMsg(msgs, answer, 'bot');
+      }
+
+      agentHistory.push({ role: 'user', content: text });
+      agentHistory.push({ role: 'assistant', content: displayAnswer });
+      saveTab('agent-messages', 'agent');
+    } catch {
+      typing.remove();
+      appendMsg(msgs, '❌ فشل الاتصال. تأكد أن الخادم يعمل على localhost:8002', 'bot');
+    }
+    btn.disabled = false; input.focus();
+  }
+
+  // ══════════════════════════════════════════════════════
+  // FLOATING WIDGET
+  // ══════════════════════════════════════════════════════
+  let fwOpen = false;
+  const fwAgentHistory = [];
+
+  function toggleFW() {
+    fwOpen = !fwOpen;
+    document.getElementById('fw-widget').classList.toggle('open', fwOpen);
+    document.getElementById('fw-btn').textContent = fwOpen ? '✕' : '🤖';
+    if (fwOpen) { fwCheckHealth(); document.getElementById('fw-agent-input').focus(); }
+  }
+
+  async function fwCheckHealth() {
+    try {
+      const r = await fetch(BASE + '/health');
+      const on = r.ok;
+      document.getElementById('fw-dot').className = on ? 'on' : '';
+      document.getElementById('fw-status').textContent = on ? 'متصل' : 'غير متصل';
+    } catch {
+      document.getElementById('fw-dot').className = '';
+      document.getElementById('fw-status').textContent = 'غير متصل';
+    }
+  }
+
+  function switchFWTab(name) {
+    document.querySelectorAll('.fw-tab').forEach((t, i) =>
+      t.classList.toggle('active', ['agent','qa'][i] === name));
+    document.querySelectorAll('.fw-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('fw-panel-' + name).classList.add('active');
+    document.getElementById('fw-' + name + '-input').focus();
+  }
+
+  function clearFW() {
+    ['fw-agent-msgs', 'fw-qa-msgs'].forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.innerHTML = '';
+      const d = document.createElement('div');
+      d.className = 'fw-msg bot';
+      d.textContent = i === 0
+        ? 'أنا مساعد المشتريات الذكي! يمكنني مساعدتك في إنشاء أوامر التوريد، عرض الموردين، ومتابعة الفواتير.'
+        : 'مرحباً! اسألني عن سياسات الشراء، الشحن، الموردين، أو أي موضوع في وثائق الشركة.';
+      el.appendChild(d);
+    });
+    fwAgentHistory.length = 0;
+  }
+
+  function fwResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+  }
+
+  function handleFWKey(e, mode) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      mode === 'qa' ? sendFWQA() : sendFWAgent();
+    }
+  }
+
+  function sendFWSuggestion(mode, text) {
+    if (!fwOpen) toggleFW();
+    switchFWTab(mode);
+    const input = document.getElementById('fw-' + mode + '-input');
+    input.value = text; fwResize(input);
+    mode === 'qa' ? sendFWQA() : sendFWAgent();
+  }
+
+  function fwAppendMsg(msgs, text, type) {
+    const d = document.createElement('div');
+    d.className = 'fw-msg ' + type;
+    if (type === 'bot' && typeof marked !== 'undefined') {
+      d.innerHTML = renderMarkdown(text);
+    } else {
+      d.innerHTML = text.replace(/\n/g, '<br>');
+    }
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  }
+
+  function fwShowTyping(msgs) {
+    const d = document.createElement('div');
+    d.className = 'fw-msg bot';
+    d.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  }
+
+  async function sendFWAgent() {
+    const input = document.getElementById('fw-agent-input');
+    const btn   = document.getElementById('fw-agent-btn');
+    const msgs  = document.getElementById('fw-agent-msgs');
+    const text  = input.value.trim();
+    if (!text) return;
+    fwAppendMsg(msgs, text, 'user');
+    input.value = ''; input.style.height = 'auto';
+    btn.disabled = true;
+    const typing = fwShowTyping(msgs);
+    try {
+      const res  = await fetch(BASE + '/agent/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history: fwAgentHistory.slice(-10) })
+      });
+      const data = await res.json();
+      typing.remove();
+      let answer = data.answer || 'لا يوجد رد';
+
+      const pdfMatch = answer.match(/__PDF_EXPORT__(.+?)__PDF_END__/s);
+      let displayAnswer = answer;
+      if (pdfMatch) {
+        let po = null;
+        try { po = JSON.parse(pdfMatch[1]); } catch {}
+        displayAnswer = answer.replace(/__PDF_EXPORT__.+?__PDF_END__/s, '').trim()
+          || `تم تجهيز ملف PDF لأمر التوريد ${po?.id || ''}.`;
+        const botDiv = fwAppendMsg(msgs, displayAnswer, 'bot');
+        if (po) {
+          const pdfBtn = document.createElement('button');
+          pdfBtn.style.cssText = 'margin-top:8px;display:block;background:#145055;color:#fff;border:none;padding:6px 16px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.78rem;';
+          pdfBtn.innerHTML = '📄 فتح / طباعة PDF';
+          pdfBtn.onclick = () => openPOPdf(po);
+          botDiv.appendChild(pdfBtn);
+          openPOPdf(po);
+        }
+      } else {
+        fwAppendMsg(msgs, answer, 'bot');
+      }
+      fwAgentHistory.push({ role: 'user', content: text });
+      fwAgentHistory.push({ role: 'assistant', content: displayAnswer });
+      saveFWTab('fw-agent-msgs', 'agent');
+    } catch {
+      typing.remove();
+      fwAppendMsg(msgs, '❌ فشل الاتصال. تأكد أن الخادم يعمل على localhost:8002', 'bot');
+    }
+    btn.disabled = false; input.focus();
+  }
+
+  async function sendFWQA() {
+    const input = document.getElementById('fw-qa-input');
+    const btn   = document.getElementById('fw-qa-btn');
+    const msgs  = document.getElementById('fw-qa-msgs');
+    const text  = input.value.trim();
+    if (!text) return;
+    fwAppendMsg(msgs, text, 'user');
+    input.value = ''; input.style.height = 'auto';
+    btn.disabled = true;
+    const typing = fwShowTyping(msgs);
+    let botDiv = null, buffer = '';
+    try {
+      const res = await fetch(BASE + '/ask-question/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: text, history: '', active_entity: 'Purchases' })
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value).split('\n').filter(l => l.startsWith('data:'));
+        for (const line of lines) {
+          const data = JSON.parse(line.slice(5).trim());
+          if (data.token !== undefined) {
+            if (!botDiv) { typing.remove(); botDiv = fwAppendMsg(msgs, '', 'bot'); }
+            buffer += data.token;
+            botDiv.innerHTML = buffer.replace(/\n/g, '<br>');
+            msgs.scrollTop = msgs.scrollHeight;
+          }
+          if (data.done && botDiv) {
+            const m = document.createElement('div');
+            m.className = 'fw-meta'; m.textContent = '📄 المصدر: وثائق النظام';
+            botDiv.appendChild(m);
+            saveFWTab('fw-qa-msgs', 'qa');
+          }
+        }
+      }
+    } catch {
+      typing.remove();
+      fwAppendMsg(msgs, '❌ فشل الاتصال. تأكد أن الخادم يعمل على localhost:8002', 'bot');
+    }
+    btn.disabled = false; input.focus();
+  }
+
+  // Hide floating widget when full-page chat opens, restore when it closes
+  const _origOpen  = openChat;
+  const _origClose = closeChat;
+  openChat = function() {
+    _origOpen();
+    document.getElementById('fw-btn').style.display = 'none';
+    document.getElementById('fw-widget').classList.remove('open');
+    fwOpen = false;
+    document.getElementById('fw-btn').textContent = '🤖';
+  };
+  closeChat = function() {
+    _origClose();
+    document.getElementById('fw-btn').style.display = '';
+  };
+
+  // ══════════════════════════════════════════════════════
+  // DASHBOARD
+  // ══════════════════════════════════════════════════════
+  let dashCharts = {};
+
+  function openDashboard() {
+    // Close chat if open
+    if (chatOpen) closeChat();
+    document.getElementById('main').style.display = 'none';
+    document.getElementById('dashboard-page').classList.add('open');
+    document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+    document.getElementById('sidebar-dash-btn').classList.add('active');
+    loadDashboard();
+  }
+
+  function closeDashboard() {
+    document.getElementById('dashboard-page').classList.remove('open');
+    document.getElementById('main').style.display = '';
+    document.getElementById('sidebar-dash-btn').classList.remove('active');
+  }
+
+  // Override goHome to also close dashboard
+  const _origGoHome = goHome;
+  goHome = function() {
+    closeDashboard();
+    _origGoHome();
+  };
+
+  // Override openChat to close dashboard
+  const _origOpen2 = openChat;
+  openChat = function() {
+    closeDashboard();
+    _origOpen2();
+  };
+
+  async function loadDashboard() {
+    try {
+      const [summaryRes, toolsRes, timelineRes, topQRes, recentRes] = await Promise.all([
+        fetch(BASE + '/analytics/summary'),
+        fetch(BASE + '/analytics/tools'),
+        fetch(BASE + '/analytics/timeline'),
+        fetch(BASE + '/analytics/top-questions'),
+        fetch(BASE + '/analytics/recent'),
+      ]);
+      const summary  = await summaryRes.json();
+      const tools    = await toolsRes.json();
+      const timeline = await timelineRes.json();
+      const topQ     = await topQRes.json();
+      const recent   = await recentRes.json();
+
+      renderSummary(summary);
+      renderTimelineChart(timeline.timeline);
+      renderToolsChart(tools.tools);
+      renderModesChart(summary);
+      renderTopQChart(topQ.questions);
+      renderRecentTable(recent.recent);
+    } catch (e) {
+      console.error('Dashboard load failed:', e);
+    }
+  }
+
+  function renderSummary(s) {
+    document.getElementById('d-total').textContent = s.total_requests.toLocaleString('ar');
+    document.getElementById('d-today').textContent = s.today_requests.toLocaleString('ar');
+    document.getElementById('d-today-date').textContent = new Date().toLocaleDateString('ar');
+    document.getElementById('d-avg-ms').textContent = s.avg_response_ms.toLocaleString('ar');
+    document.getElementById('d-success').textContent = s.success_rate + '%';
+    document.getElementById('d-agent').textContent = s.agent_requests.toLocaleString('ar');
+    document.getElementById('d-qa').textContent = s.qa_requests.toLocaleString('ar');
+  }
+
+  function destroyChart(key) {
+    if (dashCharts[key]) { dashCharts[key].destroy(); dashCharts[key] = null; }
+  }
+
+  function renderTimelineChart(data) {
+    destroyChart('timeline');
+    const ctx = document.getElementById('chart-timeline').getContext('2d');
+    dashCharts.timeline = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: data.map(d => d.day.slice(5)),
+        datasets: [
+          {
+            label: 'المساعد الذكي',
+            data: data.map(d => d.agent),
+            borderColor: '#145055',
+            backgroundColor: 'rgba(20,80,85,.1)',
+            fill: true,
+            tension: .4,
+            borderWidth: 2,
+          },
+          {
+            label: 'سؤال وجواب',
+            data: data.map(d => d.qa),
+            borderColor: '#DA5B30',
+            backgroundColor: 'rgba(218,91,48,.1)',
+            fill: true,
+            tension: .4,
+            borderWidth: 2,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Cairo' } } } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Cairo' } } },
+          x: { ticks: { font: { family: 'Cairo', size: 11 } } }
+        }
+      }
+    });
+  }
+
+  function renderToolsChart(data) {
+    destroyChart('tools');
+    const ctx = document.getElementById('chart-tools').getContext('2d');
+    const colors = ['#145055','#DA5B30','#10b981','#8b5cf6','#f59e0b','#ec4899','#06b6d4','#84cc16'];
+    dashCharts.tools = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.tool_name),
+        datasets: [{
+          label: 'مرات الاستخدام',
+          data: data.map(d => d.count),
+          backgroundColor: data.map((_, i) => colors[i % colors.length]),
+          borderRadius: 8,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Cairo' } } },
+          y: { ticks: { font: { family: 'Cairo', size: 11 } } }
+        }
+      }
+    });
+  }
+
+  function renderModesChart(summary) {
+    destroyChart('modes');
+    const ctx = document.getElementById('chart-modes').getContext('2d');
+    dashCharts.modes = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['المساعد الذكي', 'سؤال وجواب'],
+        datasets: [{
+          data: [summary.agent_requests, summary.qa_requests],
+          backgroundColor: ['#145055', '#DA5B30'],
+          borderWidth: 0,
+          hoverOffset: 8,
+        }]
+      },
+      options: {
+        responsive: true,
+        cutout: '65%',
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: 'Cairo', size: 13 }, padding: 20 } }
+        }
+      }
+    });
+  }
+
+  function renderTopQChart(data) {
+    destroyChart('topQ');
+    const ctx = document.getElementById('chart-top-q').getContext('2d');
+    const top8 = data.slice(0, 8);
+    dashCharts.topQ = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: top8.map(d => d.question.length > 30 ? d.question.slice(0, 30) + '…' : d.question),
+        datasets: [{
+          label: 'مرات السؤال',
+          data: top8.map(d => d.count),
+          backgroundColor: '#145055',
+          borderRadius: 8,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Cairo' } } },
+          y: { ticks: { font: { family: 'Cairo', size: 11 } } }
+        }
+      }
+    });
+  }
+
+  function renderRecentTable(data) {
+    const tbody = document.getElementById('d-recent-body');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:30px;">لا توجد طلبات بعد</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(r => {
+      const time = new Date(r.timestamp).toLocaleString('ar', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
+      const mode = r.mode === 'agent'
+        ? '<span class="mode-badge agent">المساعد</span>'
+        : '<span class="mode-badge qa">سؤال وجواب</span>';
+      const q = r.question.length > 50 ? r.question.slice(0, 50) + '…' : r.question;
+      const status = r.success
+        ? '<span class="success-dot ok"></span>'
+        : '<span class="success-dot fail"></span>';
+      return `<tr>
+        <td>${r.id}</td>
+        <td>${time}</td>
+        <td>${mode}</td>
+        <td>${q}</td>
+        <td>${(r.response_ms / 1000).toFixed(1)}s</td>
+        <td>${r.tool_count}</td>
+        <td>${status}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ══════════════════════════════════════════════════════
+  // FLOATING WIDGET HISTORY
+  // ══════════════════════════════════════════════════════
+  let fwActiveConvoId = { agent: null, qa: null };
+
+  function getFWConvos() {
+    return JSON.parse(localStorage.getItem('fw_chat_history') || '[]');
+  }
+
+  function saveFWTab(containerId, mode) {
+    try {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const msgs = container.querySelectorAll('.fw-msg');
+      if (msgs.length <= 1) return;
+      const lines = [];
+      msgs.forEach(function(m) {
+        if (!m.querySelector('.typing-dots')) {
+          var role = m.classList.contains('user') ? 'user' : 'bot';
+          lines.push({ role: role, text: m.innerText.trim() });
+        }
+      });
+      if (!lines.some(function(l) { return l.role === 'user'; })) return;
+      var convos = getFWConvos();
+      var title = '';
+      for (var i = 0; i < lines.length; i++) {
+        if (lines[i].role === 'user') { title = lines[i].text.slice(0, 40); break; }
+      }
+      if (!title) title = 'محادثة';
+      if (fwActiveConvoId[mode]) {
+        var idx = convos.findIndex(function(c) { return c.id === fwActiveConvoId[mode]; });
+        if (idx !== -1) {
+          convos[idx].lines = lines;
+          convos[idx].title = title;
+          localStorage.setItem('fw_chat_history', JSON.stringify(convos));
+          return;
+        }
+      }
+      var id = Date.now();
+      fwActiveConvoId[mode] = id;
+      convos.unshift({ id: id, title: title, mode: mode, time: new Date().toLocaleString('ar'), lines: lines });
+      localStorage.setItem('fw_chat_history', JSON.stringify(convos.slice(0, 20)));
+    } catch(e) {
+      console.error('saveFWTab error:', e);
+    }
+  }
+
+  function openFWHistory() {
+    const panel = document.getElementById('fw-history-panel');
+    const list = document.getElementById('fw-history-list');
+    const convos = getFWConvos();
+    panel.classList.add('open');
+    if (!convos.length) {
+      list.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:.78rem;margin-top:40px;">لا توجد محادثات سابقة</div>';
+      return;
+    }
+    list.innerHTML = convos.map(function(c) {
+      return '<div class="fw-history-item" onclick="restoreFWConvo(' + c.id + ')">' +
+        '<div class="fwh-title">' + c.title + '</div>' +
+        '<div class="fwh-meta"><span>' + c.time + '</span>' +
+        '<button class="fwh-del" onclick="event.stopPropagation();deleteFWConvo(' + c.id + ')">🗑 حذف</button></div></div>';
+    }).join('');
+  }
+
+  function closeFWHistory() {
+    document.getElementById('fw-history-panel').classList.remove('open');
+  }
+
+  function deleteFWConvo(id) {
+    var convos = getFWConvos().filter(function(c) { return c.id !== id; });
+    localStorage.setItem('fw_chat_history', JSON.stringify(convos));
+    openFWHistory();
+  }
+
+  function restoreFWConvo(id) {
+    var convo = getFWConvos().find(function(c) { return c.id === id; });
+    if (!convo) return;
+    closeFWHistory();
+    var mode = convo.mode || 'agent';
+    switchFWTab(mode);
+    var msgsId = mode === 'agent' ? 'fw-agent-msgs' : 'fw-qa-msgs';
+    var msgs = document.getElementById(msgsId);
+    msgs.innerHTML = '';
+    convo.lines.forEach(function(l) {
+      fwAppendMsg(msgs, l.text, l.role === 'user' ? 'user' : 'bot');
+    });
+    if (mode === 'agent') {
+      fwAgentHistory.length = 0;
+      convo.lines.forEach(function(l) {
+        fwAgentHistory.push({ role: l.role === 'user' ? 'user' : 'assistant', content: l.text });
+      });
+    }
+    fwActiveConvoId[mode] = id;
+  }
+</script>
+</body>
+</html>

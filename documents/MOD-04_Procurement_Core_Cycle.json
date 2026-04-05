@@ -1,0 +1,317 @@
+{
+  "module_id": "MOD-04",
+  "module_name": "Procurement Core Cycle",
+  "description": "Purchase requests creation, acceptance, rejection, PO generation and merging",
+  "stories": [
+    {
+      "id": "US-22",
+      "title": "Create Purchase Request",
+      "module": "Procurement Core Cycle",
+      "roles": [
+        "Any Staff Member (any department)"
+      ],
+      "goal": "Create and submit purchase requests for required products so procurement managers can review and act upon department needs in a structured workflow.",
+      "public_access": {
+        "enabled": true,
+        "description": "A publicly accessible PR form is available via link with no login required",
+        "future_enhancement": "Integration into HR ERP application"
+      },
+      "acceptance_criteria": {
+        "general_info": {
+          "id": {
+            "auto_generated": true,
+            "read_only": true
+          },
+          "employee_name": true,
+          "employee_id": true,
+          "from_department": {
+            "source": "dropdown"
+          },
+          "created_at": "Auto-timestamp",
+          "last_update": "Auto-updated on modification"
+        },
+        "priority": {
+          "options": [
+            "Urgent",
+            "High",
+            "Medium",
+            "Low"
+          ],
+          "seeded": true,
+          "not_configurable_from_settings": true
+        },
+        "type": {
+          "options": [
+            "Direct",
+            "Indirect"
+          ],
+          "seeded": true,
+          "not_configurable_from_settings": true,
+          "direct_auto_sets": {
+            "priority": "Urgent",
+            "expected_arrival_date": "Today",
+            "waiting_period_days": 0
+          }
+        },
+        "item_fields": {
+          "product": {
+            "source": "dropdown",
+            "required": true
+          },
+          "brand": {
+            "source": "dropdown",
+            "required": true
+          },
+          "category": {
+            "auto_filled": true,
+            "read_only": true
+          },
+          "quantity": {
+            "required": true
+          },
+          "unit": {
+            "auto_from_product": true
+          },
+          "notes": {
+            "required": false
+          }
+        },
+        "status_workflow": {
+          "Drafted": "Auto-saved every minute",
+          "Submitted": "Equals Pending; visible to manager for review"
+        },
+        "unknown_product_handling": {
+          "trigger": "User selects 'Other' from product dropdown",
+          "additional_fields": {
+            "product_name": {
+              "required": true
+            },
+            "category": {
+              "required": false
+            },
+            "unit": {
+              "required": false
+            },
+            "brand": {
+              "required": false
+            },
+            "estimated_quantity": true,
+            "description_notes": {
+              "required": false
+            }
+          },
+          "flag": "PR flagged as containing unregistered product",
+          "routing": "Purchasing Dept notified to create product (see US-03)"
+        },
+        "printing": [
+          "Empty template (PDF)",
+          "Filled version for paperwork"
+        ],
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Action",
+          "Timestamp"
+        ]
+      }
+    },
+    {
+      "id": "US-23",
+      "title": "Reject Purchase Request",
+      "module": "Procurement Core Cycle",
+      "roles": [
+        "Purchasing Manager",
+        "Purchasing Staff with permission"
+      ],
+      "goal": "Reject a submitted purchase request with a clear reason so the requesting department understands why it was denied.",
+      "acceptance_criteria": {
+        "rejection_action": {
+          "prerequisite": "PR must be in Pending state",
+          "rejection_reason": {
+            "source": "dropdown",
+            "required": true
+          },
+          "other_option": "Mandatory free-text input",
+          "status_transition": "Pending -> Rejected",
+          "timestamp_recorded": true,
+          "re_rejection_blocked": true
+        },
+        "notifications": {
+          "recipients": [
+            "Requesting user/department"
+          ],
+          "channels": [
+            "In-app",
+            "Email"
+          ],
+          "content": [
+            "Request ID",
+            "Rejection reason",
+            "Timestamp",
+            "Purchasing Manager name"
+          ]
+        },
+        "audit_log_fields": [
+          "Request ID",
+          "User ID",
+          "Role",
+          "Rejection Reason",
+          "Timestamp"
+        ]
+      }
+    },
+    {
+      "id": "US-24",
+      "title": "Accept Purchase Request",
+      "module": "Procurement Core Cycle",
+      "roles": [
+        "Purchasing Manager",
+        "Purchasing Staff with permission"
+      ],
+      "goal": "Accept a submitted PR so the system updates its status and generates Purchase Orders for procurement.",
+      "acceptance_criteria": {
+        "acceptance_action": {
+          "prerequisite": "PR must be in Pending state",
+          "status_transition": "Pending -> Accepted",
+          "po_generation": {
+            "auto": "One draft PO per product category, all linked to the PR",
+            "po_status": "Draft",
+            "po_editability": "Fully editable; not auto-submitted"
+          }
+        },
+        "post_acceptance": {
+          "pr_becomes": "Read-only",
+          "visible_in_reports": true,
+          "po_lifecycle_starts": true
+        },
+        "validations": {
+          "already_rejected_or_accepted": "Blocked with error: Invalid State: Cannot Accept",
+          "insufficient_role": "Blocked with error: Access Denied"
+        },
+        "audit_log_fields": [
+          "PR ID",
+          "PO ID(s)",
+          "Approving Manager (User ID/Role)",
+          "Timestamp"
+        ]
+      }
+    },
+    {
+      "id": "US-28",
+      "title": "Create Purchase Order (PO)",
+      "module": "Procurement Core Cycle",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Create and manage Purchase Orders with full control over order types, priority, delivery expectations, and approval workflow.",
+      "acceptance_criteria": {
+        "creation_sources": {
+          "creator": "Purchasing Department only",
+          "category_scope": "One PO per product category",
+          "linked_to_pr": "Mandatory linkage if approved PR exists",
+          "standalone": "Can be created without PR"
+        },
+        "po_attributes": {
+          "expected_delivery_date": true,
+          "grace_period": true,
+          "destination": {
+            "branch": "dropdown",
+            "address": "free text"
+          },
+          "items_and_quantities": true,
+          "brands": true,
+          "market_price_references": true,
+          "notes": true,
+          "requesting_department": true,
+          "requesting_employee_info": true,
+          "category": true,
+          "timestamps": [
+            "created_at",
+            "last_updated"
+          ]
+        },
+        "classification": {
+          "by_delivery": [
+            "Direct (same day)",
+            "Indirect"
+          ],
+          "by_priority": [
+            "Low",
+            "Medium",
+            "High",
+            "Urgent"
+          ]
+        },
+        "approval_workflow": {
+          "statuses": [
+            "Draft",
+            "Pending PM Approval",
+            "Pending FM Approval",
+            "Approved",
+            "Rejected"
+          ],
+          "approved": "Converted to Supply Order (US-33)",
+          "rejected": "Mandatory reason logged (configured in US-07)"
+        },
+        "pricing_deals": {
+          "minimum_required": 3,
+          "displayed_as": "Clickable hyperlinks on PO page",
+          "detail": "See US-29 and US-30"
+        },
+        "category_split_rule": {
+          "description": "One PO per product category even if one vendor supplies multiple categories",
+          "example": "PR with Vegetables + Desk Supplies + Electronics -> 3 separate POs"
+        },
+        "printing": "PO can be printed as blank template for manual offline use",
+        "linked_pr_behavior": "If linked to PR, data auto-filled but fully editable"
+      }
+    },
+    {
+      "id": "US-63",
+      "title": "Merge Purchase Orders",
+      "module": "Procurement Core Cycle",
+      "roles": [
+        "Purchasing Staff",
+        "Procurement User"
+      ],
+      "goal": "Merge multiple draft purchase orders of the same product category into one consolidated PO to reduce duplication.",
+      "acceptance_criteria": {
+        "eligibility_rules": {
+          "status": "Draft only",
+          "same_category": true,
+          "minimum_pos_to_merge": 2,
+          "ineligible_statuses": [
+            "Sent",
+            "Approved",
+            "Rejected",
+            "Closed"
+          ]
+        },
+        "merge_execution": {
+          "creates": "New consolidated PO with all products/items combined",
+          "not_auto_filled": [
+            "Supplier",
+            "Pricing",
+            "Delivery dates",
+            "Payment terms",
+            "Notes"
+          ],
+          "user_must": "Manually review and complete all required fields before saving",
+          "confirmation_required": true
+        },
+        "after_merge": {
+          "original_pos": "Deleted/archived; not editable or recoverable",
+          "rollback": "Not allowed"
+        },
+        "failure_handling": "If any PO becomes non-Draft during process -> merge fails gracefully",
+        "audit_log_fields": [
+          "User",
+          "Date/Time",
+          "Consolidated PO ID",
+          "List of merged PO IDs"
+        ],
+        "audit_immutable": true
+      }
+    }
+  ]
+}

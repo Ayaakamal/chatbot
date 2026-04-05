@@ -1,0 +1,207 @@
+{
+  "module_id": "MOD-09",
+  "module_name": "QA, Returns & Ratings",
+  "description": "Direct Supply Permissions (DSP), supplier and shipment rating, return requests and return resolution",
+  "stories": [
+    {
+      "id": "US-35",
+      "title": "Issue Direct Supply Permission (DSP)",
+      "module": "QA, Returns & Ratings",
+      "roles": [
+        "Procurement Officer (Staff)"
+      ],
+      "goal": "Issue a DSP once a shipment arrives so the QA team and Inventory team can process, test, and store the shipment correctly.",
+      "acceptance_criteria": {
+        "dsp_types": {
+          "Linked DSP": {
+            "arabic_label": "مرتبط بأمر توريد",
+            "description": "Linked to an existing Supply Order",
+            "auto_fills": [
+              "Supplier",
+              "Shipment details",
+              "Itemized product list",
+              "Quantities",
+              "Units",
+              "Category",
+              "Brand",
+              "From (Branch & Department)",
+              "To (Branch & Department)"
+            ],
+            "officer_can": "Review auto-filled data and add notes only",
+            "rate_field": "Auto-filled from PO; non-editable at creation",
+            "supplier_evaluation": "Normal logic applies",
+            "return_flow": "Normal (including credit notes if applicable)"
+          },
+          "Independent DSP": {
+            "arabic_label": "مستقل",
+            "description": "Not linked to any Supply Order",
+            "officer_manually_selects": [
+              "From Branch & Department",
+              "To Branch & Department",
+              "Products (Category, Brand, Product, Quantity, Unit, Notes)"
+            ],
+            "supplier_evaluation": "Automatically set to 0",
+            "return_handling": "Re-shipment only; no credit note allowed under any condition"
+          }
+        },
+        "common_dsp_fields": {
+          "dsp_id": {
+            "auto_generated": true
+          },
+          "date": {
+            "auto_filled": true,
+            "editable": true,
+            "required": true
+          },
+          "linked_so_id": {
+            "clickable_link": true,
+            "if_applicable": true
+          },
+          "supplier": true,
+          "notes": true,
+          "item_table_fields": [
+            "Category",
+            "Brand",
+            "Product",
+            "Quantity",
+            "Unit",
+            "Notes"
+          ],
+          "arrival_date_time": true,
+          "qa_testing_required": {
+            "type": "boolean",
+            "options": [
+              "Yes",
+              "No"
+            ]
+          },
+          "expected_stock_entry_date": true,
+          "rate_field": {
+            "initial_value": 0,
+            "editable": false
+          }
+        },
+        "status_and_sharing": {
+          "initial_status": "Issued",
+          "shared_with": [
+            "Inventory Team (stock-in)",
+            "QA Team (quality checks)"
+          ]
+        },
+        "triggers": {
+          "inventory": "Items marked as Pending QA",
+          "qa": "QA team performs inspection and logs results"
+        },
+        "warehouse_manager_permissions": {
+          "can_edit": false,
+          "exception": "Assign QA responsible users only"
+        },
+        "constraints": {
+          "deletion": "DSP cannot be deleted after being issued",
+          "creation_prerequisite": "Shipment arrival must be confirmed first"
+        },
+        "searchable_by": [
+          "DSP ID",
+          "Supplier",
+          "Supply Order",
+          "Status",
+          "Date range"
+        ],
+        "audit_log_fields": [
+          "User",
+          "Timestamp",
+          "Action performed"
+        ]
+      }
+    },
+    {
+      "id": "US-36",
+      "title": "Supplier & Shipment Rating After QA",
+      "module": "QA, Returns & Ratings",
+      "roles": [
+        "QA Tester"
+      ],
+      "goal": "Give numeric and written feedback after testing a shipment so the system can recalculate supplier and vendor ratings.",
+      "acceptance_criteria": {
+        "rating_prompt": "Triggered after QA test completion",
+        "rating_fields": {
+          "numeric_score": {
+            "required": true,
+            "range": "1 to 5"
+          },
+          "written_review": {
+            "required": false
+          }
+        },
+        "system_updates": {
+          "shipment_rating": "Updated and linked to this DSP",
+          "vendor_rating": "Updated as aggregated average of all shipment ratings",
+          "visible_in": "Vendor Profile",
+          "timestamped": true
+        }
+      }
+    },
+    {
+      "id": "US-37",
+      "title": "Return Request on Problematic Shipment",
+      "module": "QA, Returns & Ratings",
+      "roles": [
+        "QA Tester",
+        "Inventory Staff"
+      ],
+      "goal": "Raise a return request if issues are found so the defective shipment is properly logged and handled.",
+      "acceptance_criteria": {
+        "return_request_fields": {
+          "linked_dsp": {
+            "required": false
+          },
+          "linked_supply_order": {
+            "required": false
+          },
+          "reason_for_return": {
+            "source": "Settings list",
+            "required": false
+          }
+        },
+        "purchasing_manager_review": {
+          "approve": "Triggers return workflow (see US-38)",
+          "reject": "Request closed; logged with audit note"
+        }
+      }
+    },
+    {
+      "id": "US-38",
+      "title": "Return Resolution - Credit Note or Reshipment",
+      "module": "QA, Returns & Ratings",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Decide how the vendor compensates for a return so financial balance or resupply is properly tracked.",
+      "acceptance_criteria": {
+        "resolution_options": {
+          "Credit Note": {
+            "behavior": "Credit balance created in vendor account",
+            "auto_applied": "Next PO with same vendor",
+            "visible_in": "Vendor Profile -> Credit Balance",
+            "log_created": "With Return ID + PO link"
+          },
+          "Reshipment": {
+            "behavior": "Vendor sends replacement shipment",
+            "linked_to": [
+              "Original PO",
+              "Original Return",
+              "Original DSP"
+            ],
+            "process": "Replacement goes through receiving + QA testing flow again"
+          }
+        },
+        "alternate_flows": {
+          "no_resolution_chosen": "System blocks closure until resolution is selected",
+          "vendor_fails_to_reship": "System escalates to Admin with alert",
+          "credit_note_insufficient_tracking": "Finance Manager alerted to reconcile"
+        },
+        "audit": "All actions timestamped and linked to original PO + Return + DSP"
+      }
+    }
+  ]
+}

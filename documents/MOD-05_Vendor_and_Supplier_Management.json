@@ -1,0 +1,206 @@
+{
+  "module_id": "MOD-05",
+  "module_name": "Vendor & Supplier Management",
+  "description": "Vendor profiles, payment method and type setup, and shipping option configuration",
+  "stories": [
+    {
+      "id": "US-25",
+      "title": "Vendor Profile Setup",
+      "module": "Vendor & Supplier Management",
+      "roles": [
+        "Purchasing Manager",
+        "Purchasing Staff"
+      ],
+      "goal": "Create, edit, and delete vendor profiles with validations and archival rules so vendors are properly managed in procurement.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Purchasing Manager",
+            "Purchasing Staff"
+          ],
+          "read_only": [
+            "Finance Manager"
+          ]
+        },
+        "vendor_types": {
+          "Individual": "Single seller or small business; not a registered company",
+          "Company": "Officially registered corporate entity",
+          "Local Market": "Informal market sellers (open market)"
+        },
+        "core_fields": {
+          "vendor_name": {
+            "required": true,
+            "unique": "per type"
+          },
+          "address": {
+            "required": true,
+            "input": "Free text + map selection"
+          },
+          "email": {
+            "required": false,
+            "validated": true
+          },
+          "phone": {
+            "required": true,
+            "validated": true
+          },
+          "product_category": {
+            "required": true,
+            "multi_select": true
+          },
+          "subcategory": {
+            "required": false
+          },
+          "communication_method": {
+            "multi_select": true,
+            "options": [
+              "Email",
+              "Phone calls",
+              "WhatsApp"
+            ]
+          },
+          "remaining_credit": {
+            "initial_value": 0,
+            "currency": "EGP",
+            "updated_on": "Approved returns"
+          }
+        },
+        "conditional_fields": {
+          "company_type_only": {
+            "contact_person": {
+              "required": false,
+              "fields": [
+                "Name",
+                "Phone",
+                "Email"
+              ]
+            },
+            "commercial_registration_number": {
+              "required": true
+            },
+            "tax_card_number": {
+              "required": true
+            }
+          },
+          "individual_or_local_market": {
+            "commercial_and_tax_numbers": "Not required"
+          }
+        },
+        "system_generated_fields": {
+          "vendor_status": {
+            "default": "active"
+          },
+          "vendor_rate": {
+            "initial_value": 0,
+            "updated_by": "QA ratings"
+          }
+        },
+        "archival_and_deletion": {
+          "linked_to_pos_shipments_invoices": "Archive instead of Delete",
+          "archived_behavior": "Not usable in new POs; visible in reports; can be unarchived",
+          "no_active_ties": "Permanent delete allowed"
+        },
+        "search_and_filter": {
+          "search_by": [
+            "Vendor Name"
+          ],
+          "filter_by": [
+            "Vendor Name",
+            "Type",
+            "Category",
+            "Status (active/inactive)"
+          ]
+        },
+        "audit_log_fields": [
+          "User Name",
+          "Role",
+          "Timestamp",
+          "Action Type"
+        ]
+      }
+    },
+    {
+      "id": "US-26",
+      "title": "Set Up Vendor Payment Methods and Payment Types",
+      "module": "Vendor & Supplier Management",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Define vendor preferred payment methods and types so Purchase Orders and Supply Orders reflect correct financial agreements.",
+      "acceptance_criteria": {
+        "payment_methods_source": "Configured from Financial Settings (US-14)",
+        "available_payment_methods": [
+          "Cash",
+          "Card (Visa/Mastercard)",
+          "Cheque",
+          "Bank Transfer",
+          "Credit/Debit Card",
+          "Mobile Wallet (Apple Pay, Google Pay)",
+          "Online Gateway (PayPal, Stripe)"
+        ],
+        "payment_types_source": "Configured from Financial Settings (US-15)",
+        "available_payment_types": [
+          {
+            "type": "Deposit Billing",
+            "deposit_percent_options": [
+              10,
+              25,
+              50,
+              85,
+              100
+            ]
+          },
+          {
+            "type": "Without Deposit",
+            "description": "Full payment at due date"
+          },
+          {
+            "type": "Advanced Payment",
+            "description": "Before shipment"
+          },
+          {
+            "type": "Deferred Payment",
+            "description": "After shipment"
+          },
+          {
+            "type": "Periodic Payment",
+            "interval_days_options": [
+              2,
+              7,
+              15,
+              30,
+              45
+            ]
+          }
+        ],
+        "rules": {
+          "pm_must_select": "One or more active payment methods AND one or more payment types",
+          "mandatory_before": "Supply Order status changes from Draft to Confirmed"
+        }
+      }
+    },
+    {
+      "id": "US-27",
+      "title": "Set Up Vendor Shipping Options",
+      "module": "Vendor & Supplier Management",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Configure vendor shipping preferences so Purchase Orders correctly reflect logistics responsibilities.",
+      "acceptance_criteria": {
+        "shipping_options": {
+          "Self-Shipped": "Vendor delivers to company representative; no shipping fee",
+          "Vendor-Shipped": "Vendor uses own fleet; shipping price added to pricing deal total"
+        },
+        "default": "Self-Shipped",
+        "configuration_timing": "During vendor profile setup",
+        "per_po_override": true,
+        "audit_log_fields": [
+          "User",
+          "Role",
+          "Timestamp"
+        ]
+      }
+    }
+  ]
+}

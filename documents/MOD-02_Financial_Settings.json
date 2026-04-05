@@ -1,0 +1,402 @@
+{
+  "module_id": "MOD-02",
+  "module_name": "Financial Settings",
+  "description": "Budget management, currencies, taxes, rounding, payment intervals, methods and types",
+  "stories": [
+    {
+      "id": "US-09",
+      "title": "Set and Manage Purchasing Department Budget",
+      "module": "Financial Settings",
+      "roles": [
+        "Finance Manager",
+        "Super Admin",
+        "Operational Manager"
+      ],
+      "goal": "Define and manage a specific monthly budget for the Purchasing Department so purchasing activities remain within financial limits.",
+      "integration_note": "Applied only if no integration with Finance module.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "Finance Manager": [
+            "Set monthly budget",
+            "Increase budget only (no manual decrease)"
+          ],
+          "Purchasing Manager": [
+            "View total budget",
+            "View available balance",
+            "Cannot modify"
+          ],
+          "Purchasing Staff": [
+            "No access by default",
+            "Can be granted View Only via permissions"
+          ]
+        },
+        "budget_setup": {
+          "fields": [
+            "Month/Year (mandatory)",
+            "Budget Amount (mandatory, numeric, 2 decimals)"
+          ],
+          "constraint": "Each month can have exactly one active budget record"
+        },
+        "modification_rules": {
+          "increase": "FM can add funds only; logged as separate entry",
+          "decrease": "Automatic only — triggered by approved payment journal entries",
+          "negative_balance": {
+            "display": "Red",
+            "label": "Over budget - Due Payments"
+          }
+        },
+        "history_tracking": {
+          "positive_entries": "Green (+) for increases",
+          "negative_entries": "Red (-) for deductions",
+          "entry_fields": [
+            "Amount",
+            "Reason/Source",
+            "Timestamp",
+            "User/Role"
+          ],
+          "access": "Read-only for Finance Manager and Purchasing Manager"
+        },
+        "notifications": {
+          "trigger": "Budget increase",
+          "auto_notify": "Purchasing Manager via system dashboard",
+          "optional": "FM can click Notify by Email",
+          "content": [
+            "New total budget",
+            "Amount of increase",
+            "Date",
+            "Finance Manager name"
+          ],
+          "duplicate_prevention": true
+        }
+      }
+    },
+    {
+      "id": "US-10",
+      "title": "Currencies & Taxes",
+      "module": "Financial Settings",
+      "roles": [
+        "Finance Manager",
+        "Super Admin"
+      ],
+      "goal": "Configure currencies and tax types so all procurement transactions are calculated consistently and align with financial requirements.",
+      "integration_note": "Applied only if no integration with Finance module.",
+      "acceptance_criteria": {
+        "currency_management": {
+          "base_currency": "Set by Super Admin via country setup; country auto-links to base currency",
+          "multi_currency": "FM enables additional currencies (e.g., USD, EUR, SAR)",
+          "exchange_rates": {
+            "updated_by": "FM manually",
+            "format": "Numeric, 2 decimals",
+            "validation": "Must be > 0"
+          },
+          "restriction": "FM cannot change base currency or country — only Super Admin can"
+        },
+        "tax_setup": {
+          "fm_can_create_multiple_taxes": true,
+          "tax_fields": [
+            "Name (unique)",
+            "Percentage (0.01% to 100%)"
+          ],
+          "default_vat": "FM sets default VAT applied to all new procurement documents",
+          "update_behavior": "Tax updates affect future transactions only; historical transactions retain original %"
+        },
+        "rounding_rules": "FM configures global rounding (e.g., 2 decimals, round up, round nearest)",
+        "example_calculation": {
+          "vendor_currency": "USD",
+          "amount": 1000,
+          "exchange_rate": 30.0,
+          "tax_percent": 14,
+          "tax_amount_usd": 140,
+          "converted_total_egp": 34200
+        },
+        "audit_log_fields": [
+          "User",
+          "Action",
+          "Old Value",
+          "New Value",
+          "Timestamp"
+        ]
+      }
+    },
+    {
+      "id": "US-11",
+      "title": "Global Tax & Precision Rules",
+      "module": "Financial Settings",
+      "roles": [
+        "Finance Manager"
+      ],
+      "goal": "Configure global tax adjustments and rounding/decimal precision rules so all invoices, POs, and financial reports remain compliant.",
+      "integration_note": "Applied only if no integration with Finance module.",
+      "acceptance_criteria": {
+        "global_tax_adjustments": {
+          "scope": "Future transactions only",
+          "historical_transactions": "Retain original tax %",
+          "audit_trail": true
+        },
+        "rounding_options": [
+          "Nearest integer",
+          "0.01 (2 decimals)",
+          "0.001 (3 decimals)",
+          "0.0001 (4 decimals)"
+        ],
+        "decimal_precision_options": [
+          2,
+          3,
+          4
+        ],
+        "example": {
+          "subtotal": 123.4567,
+          "rule": "2 decimals",
+          "result": 123.46
+        },
+        "validations": {
+          "tax_percent": "Numeric, > 0, <= 100",
+          "active_global_tax_settings": "Only one at a time",
+          "confirmation_warning": "Changing this setting affects all future transactions. Historical data remains unchanged. Proceed?"
+        },
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Old Value",
+          "New Value",
+          "Timestamp"
+        ]
+      }
+    },
+    {
+      "id": "US-13",
+      "title": "Configure Payment Intervals",
+      "module": "Financial Settings",
+      "roles": [
+        "Finance Manager",
+        "Super Admin"
+      ],
+      "goal": "Configure allowable payment intervals (e.g., Net 7, Net 15, Net 30, Net 45) with vendor-specific applicability so PMs can only use approved terms.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Finance Manager",
+            "Super Admin"
+          ],
+          "view_and_apply": [
+            "Purchasing Manager",
+            "Finance Staff"
+          ],
+          "view_only": [
+            "Other roles"
+          ]
+        },
+        "interval_fields": {
+          "name": {
+            "required": true,
+            "unique": true,
+            "example": "Net 30"
+          },
+          "number_of_days": {
+            "required": true,
+            "type": "integer",
+            "min": 1
+          },
+          "vendor_applicability": {
+            "options": [
+              "All Vendors",
+              "Specific Vendors (multi-select)"
+            ]
+          },
+          "status": {
+            "options": [
+              "active",
+              "inactive"
+            ]
+          }
+        },
+        "deletion_rules": {
+          "used_in_active_po_or_invoice": "Cannot be deleted",
+          "deactivated": "Hidden from new POs; visible in historical records"
+        },
+        "usage_context": [
+          "Purchase Order creation",
+          "Invoice Approval",
+          "Schedule Payment"
+        ],
+        "performance": {
+          "max_response_time_seconds": 1
+        }
+      }
+    },
+    {
+      "id": "US-14",
+      "title": "Create Payment Methods",
+      "module": "Financial Settings",
+      "roles": [
+        "Finance Manager"
+      ],
+      "goal": "Create payment methods so payments follow company compliance and no unapproved method is used.",
+      "integration_note": "Applied only if no integration with Finance module.",
+      "acceptance_criteria": {
+        "available_methods": [
+          "Cash",
+          "Card (Visa/Mastercard)",
+          "Cheque",
+          "Bank Transfer",
+          "Credit/Debit Card",
+          "Mobile Wallet (Apple Pay, Google Pay)",
+          "Online Gateway (PayPal, Stripe)"
+        ],
+        "creation_fields": {
+          "name": {
+            "required": true,
+            "unique": true
+          },
+          "description": {
+            "required": false
+          },
+          "status": {
+            "default": "active"
+          },
+          "additional_info": {
+            "required": false,
+            "type": "free text"
+          },
+          "vendor_applicability": {
+            "options": [
+              "All Vendors",
+              "Specific Vendors"
+            ]
+          }
+        },
+        "conditional_fields": {
+          "bank_transfer": [
+            "Bank Name (mandatory)",
+            "Account Number (mandatory)",
+            "IBAN (mandatory, validated)"
+          ],
+          "deferred_credit": [
+            "Maximum credit days (integer > 0, mandatory)"
+          ]
+        },
+        "deletion_rules": {
+          "used_in_po_or_invoice": "Cannot be deleted; only set to Inactive",
+          "no_payment_method_defined": "System blocks PO approval with error message"
+        },
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Action",
+          "Old Value",
+          "New Value",
+          "Timestamp"
+        ]
+      }
+    },
+    {
+      "id": "US-15",
+      "title": "Create Payment Types",
+      "module": "Financial Settings",
+      "roles": [
+        "Finance Manager",
+        "Super Admin"
+      ],
+      "goal": "Define configurable Payment Types so Purchasing Managers can select only approved payment types aligned with financial policies.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Finance Manager",
+            "Super Admin"
+          ],
+          "view_and_apply": [
+            "Purchasing Manager",
+            "Finance Staff"
+          ],
+          "view_only": [
+            "Other roles"
+          ]
+        },
+        "payment_types": [
+          {
+            "type": "Deposit Billing",
+            "description": "Partial deposit paid upfront; remaining per schedule",
+            "configurable_fields": [
+              "Deposit % (options: 10, 25, 50, 85, 100)"
+            ]
+          },
+          {
+            "type": "Without Deposit",
+            "description": "Full payment on due date",
+            "configurable_fields": [
+              "Due Date (required)"
+            ]
+          },
+          {
+            "type": "Advanced Payment",
+            "description": "Full or partial payment before shipment",
+            "configurable_fields": [
+              "Advance % (optional)"
+            ]
+          },
+          {
+            "type": "Deferred Payment",
+            "description": "Payment after shipment/delivery",
+            "configurable_fields": [
+              "Delay Days (integer)"
+            ]
+          },
+          {
+            "type": "Periodic Payment",
+            "description": "Recurring payments at set intervals",
+            "configurable_fields": [
+              "Interval Days (options: 2, 7, 15, 30, 45)"
+            ]
+          },
+          {
+            "type": "Custom Type",
+            "description": "FM-defined logic for special cases",
+            "configurable_fields": [
+              "Name",
+              "Description",
+              "Applicable Vendors"
+            ]
+          }
+        ],
+        "example_scenarios": [
+          {
+            "type": "Deposit Billing 25%",
+            "po_total": 100000,
+            "deposit": 25000,
+            "remaining": 75000
+          },
+          {
+            "type": "Deferred 30 days",
+            "invoice_date": "01/10",
+            "due_date": "31/10"
+          },
+          {
+            "type": "Periodic 4x15 days",
+            "total": 60000,
+            "installments": [
+              15000,
+              15000,
+              15000,
+              15000
+            ],
+            "dates": [
+              "01/10",
+              "16/10",
+              "31/10",
+              "15/11"
+            ]
+          }
+        ],
+        "deletion_rules": "Used in POs/invoices -> cannot be deleted; only deactivated",
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Action",
+          "Timestamp",
+          "Old Value",
+          "New Value"
+        ]
+      }
+    }
+  ]
+}

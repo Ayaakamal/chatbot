@@ -1,0 +1,350 @@
+{
+  "module_id": "MOD-08",
+  "module_name": "Invoices & Financials",
+  "description": "Vendor invoices, validation, payment execution, credit notes, vendor reconciliation and payment scheduling",
+  "stories": [
+    {
+      "id": "US-34",
+      "title": "Budget Deduction After Payment Journal Confirmation",
+      "module": "Invoices & Financials",
+      "roles": [
+        "Finance Manager"
+      ],
+      "goal": "Decrease the purchasing budget once a payment journal is confirmed as Paid so available funds reflect real commitments.",
+      "acceptance_criteria": {
+        "trigger": "Payment Journal status = Paid",
+        "sequential_rule": {
+          "requirement": "All previous scheduled payments for the same invoice must be Paid first",
+          "blocked_message": "You cannot pay unless the previous one is paid"
+        },
+        "deduction_log_fields": [
+          "Supply Order ID",
+          "Invoice ID",
+          "Payment Journal ID",
+          "Vendor Name",
+          "Amount deducted",
+          "Timestamp",
+          "User performing action"
+        ],
+        "negative_balance": {
+          "display": "Red",
+          "label": "Over budget - Due Payments"
+        },
+        "notifications": {
+          "notify_checkboxes": [
+            "Finance Manager",
+            "Purchasing Manager"
+          ]
+        }
+      }
+    },
+    {
+      "id": "US-39",
+      "title": "Record Vendor Invoices",
+      "module": "Invoices & Financials",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Record vendor invoices linked to supply orders so the finance module can track outstanding liabilities and payments.",
+      "acceptance_criteria": {
+        "auto_generated": "Invoice generated when vendor invoice received; fully editable",
+        "invoice_fields": {
+          "invoice_id": {
+            "auto_generated": true,
+            "read_only": true
+          },
+          "invoice_reference_id": {
+            "input": true,
+            "source": "Vendor or VAT portal"
+          },
+          "vendor_info": {
+            "hyperlinked": true
+          },
+          "facility_info": [
+            "Address",
+            "Name",
+            "Logo"
+          ],
+          "so_reference_id": {
+            "popup_info": true
+          },
+          "issue_date": true,
+          "due_date": true,
+          "items": true,
+          "quantities": {
+            "editable": true,
+            "recalculates_total": true
+          },
+          "unit_prices": {
+            "source": "Pricing deal",
+            "editable": false
+          },
+          "tax": true,
+          "shipping": true,
+          "subtotal_and_total": true,
+          "scanned_invoice_pdf": {
+            "required": true,
+            "editable": false
+          }
+        },
+        "editing_rules": {
+          "allowed": "Item quantities only; total auto-recalculates",
+          "not_allowed": [
+            "Change product",
+            "Change unit",
+            "Change price",
+            "Add new product"
+          ]
+        },
+        "statuses": [
+          "Draft",
+          "Submitted",
+          "Approved (Validated)",
+          "Partially Paid",
+          "Paid",
+          "Cancelled"
+        ],
+        "submission_locking_rule": {
+          "once_submitted": "Invoice becomes read-only",
+          "allowed_actions_after_submission": [
+            "Validation (US-40)",
+            "Cancellation"
+          ]
+        }
+      }
+    },
+    {
+      "id": "US-40",
+      "title": "Vendor Invoice Validation",
+      "module": "Invoices & Financials",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Validate vendor invoices against purchase orders and received items so payments are only made for what was delivered and approved.",
+      "acceptance_criteria": {
+        "validation_process": "User compares attached original invoice with system-generated invoice",
+        "post_validation": {
+          "valid": "Invoice can be scheduled or paid",
+          "invalid": "Invoice must be cancelled"
+        },
+        "system_blocks": "Scheduling or payment for Draft or invalid invoices",
+        "note": "Only Validated invoices can be scheduled or paid"
+      }
+    },
+    {
+      "id": "US-41",
+      "title": "Payment Execution",
+      "module": "Invoices & Financials",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Create and process payments against vendor invoices through a structured payment journal so each payment is properly recorded.",
+      "acceptance_criteria": {
+        "payment_journal": {
+          "auto_title": "Payment Voucher for Required Amount",
+          "fields": [
+            "Payment Reference No.",
+            "Linked Invoice No.",
+            "Vendor Info",
+            "Payment Method",
+            "Payment Amount",
+            "Payment Date",
+            "Currency",
+            "Processed By"
+          ]
+        },
+        "invoice_payment_linkage": {
+          "one_to_many": "One invoice can have multiple payments",
+          "invoice_status_auto_updates": {
+            "Partially Paid": "Total payments < invoice amount",
+            "Paid": "Total payments = invoice total",
+            "on_paid": "Further scheduled payments auto-cancelled; Finance Manager notified"
+          }
+        },
+        "amount_redistribution": {
+          "trigger": "User edits a payment amount",
+          "behavior": "Remaining difference redistributed evenly across unpaid installments",
+          "constraint": "Total of all installments must always equal Invoice Total"
+        },
+        "payment_statuses": {
+          "Pending": "Created but not yet executed",
+          "Paid": "Executed; journal finalised",
+          "Cancelled": "Voided before execution",
+          "Overdue": "Past due date",
+          "Rescheduled": "Postponed; new entry created; old entry retained"
+        },
+        "sequential_payment_rule": "Cannot mark payment Paid unless all previous scheduled payments are Paid",
+        "vendor_balance_impact": {
+          "on_paid": "Vendor balance auto-updated",
+          "vendor_credit_offset": true,
+          "vendor_summary_fields": [
+            "Total Purchases",
+            "Total Paid",
+            "Outstanding Amount",
+            "Vendor Credit"
+          ]
+        },
+        "audit_log_fields": [
+          "Payment creation",
+          "Edit",
+          "Status changes",
+          "User ID",
+          "Role",
+          "Action",
+          "Timestamp",
+          "Linked Invoice",
+          "Old vs New values"
+        ]
+      }
+    },
+    {
+      "id": "US-42",
+      "title": "Credit Notes Handling",
+      "module": "Invoices & Financials",
+      "roles": [
+        "Finance Manager"
+      ],
+      "goal": "Issue vendor credit notes linked to returns or overpayments so future invoices are reduced automatically.",
+      "acceptance_criteria": {
+        "triggers": [
+          "Invoice rejected after validation",
+          "Payment reversal needed after execution",
+          "Approved return request (see US-38)"
+        ],
+        "credit_note_behavior": {
+          "must_be_tied_to": [
+            "Return request",
+            "Vendor"
+          ],
+          "auto_deducted_from": "Next payable invoice(s) for the same vendor",
+          "remaining_balance": "Rolls forward until fully utilised"
+        }
+      }
+    },
+    {
+      "id": "US-45",
+      "title": "Vendor Balance Reconciliation",
+      "module": "Invoices & Financials",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Maintain running balances for each vendor so accounts can be reconciled easily.",
+      "acceptance_criteria": {
+        "balance_formula": "Vendor Balance = Invoices - Payments - Credit Notes",
+        "auto_update": "In vendor profile upon any payment status change",
+        "real_time_rules": {
+          "included": "Paid payments only",
+          "excluded": [
+            "Cancelled payments",
+            "Rescheduled placeholder records"
+          ]
+        },
+        "export": "Reconciliation report available"
+      }
+    },
+    {
+      "id": "US-54",
+      "title": "Schedule Payments",
+      "module": "Invoices & Financials",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Schedule payments for specific vendors based on predefined intervals and payment methods so payment plans are generated automatically.",
+      "acceptance_criteria": {
+        "access_points": [
+          "Vendor Profile Page -> Schedule Payment button (vendor pre-selected)",
+          "Invoices page -> select validated invoice -> Schedule Payment button",
+          "Sidebar Menu -> Invoices -> Schedule Payment tab"
+        ],
+        "input_parameters": {
+          "invoice": {
+            "required": true,
+            "one_per_schedule": true,
+            "must_be_validated": true
+          },
+          "payment_method": {
+            "source": "Pricing deal linked to invoice",
+            "editable": true
+          },
+          "payment_interval": {
+            "source": "Pricing deal linked to invoice",
+            "editable": true
+          },
+          "total_amount": {
+            "auto_pulled_from": "Linked invoice"
+          },
+          "start_date": {
+            "type": "calendar picker"
+          },
+          "number_of_payments": {
+            "type": "integer"
+          },
+          "end_date": {
+            "auto_generated": true,
+            "formula": "start_date + (interval * number_of_payments)"
+          }
+        },
+        "auto_generated_example": {
+          "total": 100000,
+          "interval": "Net 15",
+          "payments": 4,
+          "start_date": "01/08",
+          "schedule": [
+            {
+              "date": "01/08",
+              "amount": 25000
+            },
+            {
+              "date": "15/08",
+              "amount": 25000
+            },
+            {
+              "date": "30/08",
+              "amount": 25000
+            },
+            {
+              "date": "15/09",
+              "amount": 25000
+            }
+          ]
+        },
+        "auto_rebalancing": {
+          "trigger": "User edits any payment amount or date",
+          "behavior": "Remaining amounts redistributed evenly; subsequent dates shift to maintain interval"
+        },
+        "validations": {
+          "invoice_linkage": "One invoice per schedule only",
+          "amount_validation": "Total of all payments must equal Invoice Total exactly",
+          "chronological_order": "Payment dates must be ascending",
+          "overdue_rule": "Overdue payment must be resolved before other payments can proceed"
+        },
+        "payment_statuses": [
+          "Pending",
+          "Paid",
+          "Cancelled",
+          "Rescheduled"
+        ],
+        "notifications": {
+          "reminders": "Configurable (e.g., 3 or 7 days before due)",
+          "overdue": "Auto-flagged",
+          "recipients": [
+            "Finance Manager",
+            "Purchasing Manager",
+            "Vendor (if enabled)"
+          ]
+        },
+        "audit_log_fields": [
+          "Schedule creation",
+          "Edit",
+          "Approval",
+          "Rescheduling",
+          "Cancellations",
+          "User ID",
+          "Role",
+          "Timestamp",
+          "Old vs New values"
+        ]
+      }
+    }
+  ]
+}

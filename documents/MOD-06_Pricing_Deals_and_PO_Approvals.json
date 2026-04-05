@@ -1,0 +1,235 @@
+{
+  "module_id": "MOD-06",
+  "module_name": "Pricing Deals & PO Approvals",
+  "description": "Creating pricing deals, attaching them to POs, PM approval and converting to supply orders",
+  "stories": [
+    {
+      "id": "US-29",
+      "title": "Pricing Deal Management",
+      "module": "Pricing Deals & PO Approvals",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Create and manage pricing deals with vendors to negotiate and secure the best possible prices and terms.",
+      "acceptance_criteria": {
+        "prerequisites": {
+          "vendor": "Must be linked to existing vendor",
+          "no_vendor": "Prompt: Please create a vendor first",
+          "original_deal_pdf": {
+            "required": true,
+            "type": "PDF scan from vendor"
+          }
+        },
+        "availability_period": {
+          "start": "Today",
+          "end": "Today + chosen period (overridable manually)",
+          "period_options": [
+            "week",
+            "15 days",
+            "month",
+            "6 months",
+            "1 year"
+          ]
+        },
+        "deal_types": {
+          "One-time": "Per shipment",
+          "Contract": "Fixed terms (6 months, 1 year, etc.)"
+        },
+        "mandatory_fields": {
+          "overall": [
+            "Vendor Selection",
+            "Vendor Info",
+            "Original Pricing Deal (PDF)",
+            "Deal Type",
+            "Expiration Period",
+            "Start/End Dates"
+          ],
+          "per_item": [
+            "Product Name",
+            "Brand",
+            "Category",
+            "Total per Item"
+          ],
+          "shipping": {
+            "required": true,
+            "default_if_empty": "Self-Shipping"
+          }
+        },
+        "optional_fields": {
+          "overall": [
+            "Total Before Negotiation",
+            "Total After Negotiation",
+            "Expected Delivery Date",
+            "Penalty Clause",
+            "Payment Terms",
+            "Terms & Conditions",
+            "Notes"
+          ],
+          "saving_percentage": "Auto-displayed if both Total Before and After are filled",
+          "per_item": [
+            "Amount (default: 1)",
+            "Price per Unit",
+            "Discount",
+            "Taxes",
+            "Market Price"
+          ]
+        },
+        "negotiation": {
+          "negotiated_total": "Stored separately from vendor-offered total",
+          "history": "Full change history maintained in audit log"
+        },
+        "export": [
+          "Preview",
+          "Export to PDF",
+          "Print"
+        ],
+        "search_and_filter": {
+          "search_by": [
+            "Vendor name"
+          ],
+          "filter_by": [
+            "Status (available/expired)",
+            "Vendor",
+            "Deal Type",
+            "Date range"
+          ]
+        }
+      }
+    },
+    {
+      "id": "US-30",
+      "title": "Attach Pricing Deals to PO",
+      "module": "Pricing Deals & PO Approvals",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Attach pricing deals from vendors to a purchase order so the manager can compare and approve the best one.",
+      "acceptance_criteria": {
+        "attachment_formats": [
+          "PDF upload",
+          "Structured form entry"
+        ],
+        "display": {
+          "format": "Clickable hyperlink per deal on PO page",
+          "on_click": "Opens preview page with download-as-PDF option"
+        },
+        "audit_log_fields": [
+          "Who added/edited each deal",
+          "When deals were attached or modified"
+        ]
+      }
+    },
+    {
+      "id": "US-31",
+      "title": "PM Approval of PO",
+      "module": "Pricing Deals & PO Approvals",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Approve the PO with attached pricing deals and select one deal to finalise the purchase order with the chosen vendor.",
+      "acceptance_criteria": {
+        "approval_rules": {
+          "system_validates": [
+            "At least 1 pricing deal attached",
+            "All items have valid brands",
+            "All items have quantities",
+            "All items have expected delivery dates"
+          ],
+          "pm_must_select": "Exactly one pricing deal before approval"
+        },
+        "status_transition": "Pending Approval -> Approved",
+        "rejection": {
+          "requires": "Reason from predefined list",
+          "logged": true
+        },
+        "post_approval": "System locks PO and all attached deals",
+        "audit_log_fields": [
+          "Selected deal ID",
+          "Vendor name",
+          "Timestamp",
+          "Rejection reason (if applicable)"
+        ]
+      }
+    },
+    {
+      "id": "US-33",
+      "title": "Convert Approved PO into Supply Order",
+      "module": "Pricing Deals & PO Approvals",
+      "roles": [
+        "Procurement Officer"
+      ],
+      "goal": "Generate a supply order once a PO is approved by Finance Manager so suppliers and receiving department have a clear actionable order.",
+      "acceptance_criteria": {
+        "preconditions": [
+          "PO Status = Approved by FM",
+          "Pricing deal selected and approved"
+        ],
+        "supply_order_fields": {
+          "so_id": {
+            "auto_generated": true
+          },
+          "date_time": {
+            "auto_filled": true,
+            "editable": false
+          },
+          "from": {
+            "value": "Purchasing Department",
+            "source": "dropdown"
+          },
+          "to": {
+            "source": "dropdown of all departments"
+          },
+          "branch": {
+            "type": "free text"
+          },
+          "address": {
+            "type": "free text"
+          },
+          "reason_for_supply": {
+            "source": "dropdown",
+            "required": true,
+            "examples": [
+              "Shortage",
+              "Stock balancing",
+              "Project transfer"
+            ]
+          },
+          "linked_po_id": {
+            "hyperlink": true
+          },
+          "linked_pricing_deal_id": {
+            "hyperlink": true
+          },
+          "supplier_vendor_info": [
+            "Name",
+            "Code",
+            "Contact Details",
+            "Bank Details"
+          ],
+          "approved_item_list": [
+            "Quantities",
+            "Units",
+            "Negotiated Prices"
+          ],
+          "total_price_before_negotiation": true,
+          "total_price_after_negotiation": true,
+          "expected_delivery_dates": true,
+          "terms_and_conditions": "Auto-pulled from contract/deal"
+        },
+        "status_workflow": {
+          "statuses": [
+            "Draft",
+            "Submitted"
+          ],
+          "editability": "Fully editable in Draft (quantities and place info only)"
+        },
+        "post_submission": "Invoice auto-created immediately after SO submission",
+        "audit_log_fields": [
+          "User",
+          "Timestamp",
+          "Action"
+        ]
+      }
+    }
+  ]
+}

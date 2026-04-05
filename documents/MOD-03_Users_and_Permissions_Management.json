@@ -1,0 +1,269 @@
+{
+  "module_id": "MOD-03",
+  "module_name": "Users & Permissions Management",
+  "description": "Secure login, account creation, session control, permissions, dashboard and profile management",
+  "stories": [
+    {
+      "id": "US-17",
+      "title": "Secure Login",
+      "module": "Users & Permissions Management",
+      "roles": [
+        "All system users"
+      ],
+      "goal": "Securely log in to the system using multiple identifiers and access a personalized dashboard with assigned permissions.",
+      "acceptance_criteria": {
+        "login_identifiers": [
+          "Email",
+          "Phone Number",
+          "National ID"
+        ],
+        "password": "Mandatory in all cases",
+        "password_rules": {
+          "min_length": 8,
+          "requires": [
+            "uppercase",
+            "lowercase",
+            "number",
+            "special character"
+          ]
+        },
+        "two_fa": {
+          "optional": true,
+          "method": "OTP via Email or SMS",
+          "expiry_minutes": 2,
+          "max_retries": 3
+        },
+        "account_status_check": [
+          "active",
+          "inactive",
+          "suspended"
+        ],
+        "first_time_login": {
+          "trigger": "System flag = true",
+          "behavior": "Forces password change before dashboard access",
+          "event_logged": "First-time login password change with timestamp and user ID",
+          "on_failure": "Access denied until password updated"
+        },
+        "session_management": {
+          "remember_me": "Encrypted token saved in local storage",
+          "auto_logout_inactivity": "Configurable (default: 15 minutes)"
+        },
+        "audit_log_fields": [
+          "Timestamp",
+          "IP Address",
+          "Device",
+          "Success/Failure"
+        ]
+      }
+    },
+    {
+      "id": "US-18",
+      "title": "Signup / Account Creation",
+      "module": "Users & Permissions Management",
+      "roles": [
+        "Admin"
+      ],
+      "goal": "Create and approve user accounts with role and permissions so new employees can access the system securely.",
+      "acceptance_criteria": {
+        "employee_linkage_fields": {
+          "full_name": "text",
+          "department": "dropdown (configured from settings)",
+          "job_title": "text",
+          "national_id": {
+            "type": "text",
+            "validation": "14 digits (Egypt)"
+          },
+          "email": {
+            "required": true
+          },
+          "phone": "country code + number"
+        },
+        "account_fields": [
+          "Username (auto-suggested, editable)",
+          "Email",
+          "Phone",
+          "Password",
+          "Role(s)",
+          "Permissions"
+        ],
+        "verification": {
+          "method": "OTP to phone or email",
+          "required_for": "Account activation on first login"
+        },
+        "uniqueness_constraints": [
+          "Email",
+          "Phone"
+        ],
+        "audit_log_fields": [
+          "Admin ID",
+          "Date",
+          "Time",
+          "Employee Reference"
+        ]
+      }
+    },
+    {
+      "id": "US-19",
+      "title": "Logout & Session Control",
+      "module": "Users & Permissions Management",
+      "roles": [
+        "All system users"
+      ],
+      "goal": "Log out of the system manually or automatically so the account remains secure when not in use.",
+      "acceptance_criteria": {
+        "manual_logout": {
+          "clears": [
+            "Session token",
+            "Auth cookies from local storage",
+            "Server session"
+          ],
+          "redirect": "Login screen"
+        },
+        "auto_logout": {
+          "warning": "Popup shown 1 minute before",
+          "default_inactivity_threshold_minutes": 15
+        },
+        "audit_log_fields": [
+          "User ID",
+          "Timestamp",
+          "Device/Browser",
+          "Logout Type (manual/auto/forced)"
+        ]
+      }
+    },
+    {
+      "id": "US-20",
+      "title": "Assign & Manage Permissions",
+      "module": "Users & Permissions Management",
+      "roles": [
+        "Admin",
+        "Purchasing Manager"
+      ],
+      "goal": "Assign granular permissions to users or groups so each user can only perform authorized actions.",
+      "acceptance_criteria": {
+        "permission_model": {
+          "granularity": "Every action is a separate permission",
+          "examples": [
+            "Create Vendor",
+            "Edit PO",
+            "Approve PR"
+          ],
+          "crud_per_entity": true
+        },
+        "permission_groups": {
+          "configurable": true,
+          "reusable": true,
+          "example": "Finance Manager Set = Approve Invoices + Manage Taxes + View Reports"
+        },
+        "overrides": "Admin can override group settings for a single user",
+        "ui_features": {
+          "checkbox_tree": "Expandable per module",
+          "search": "Find permission by keyword"
+        },
+        "enforcement": "Backend API level (not just UI)",
+        "unauthorized_attempts": "Logged and flagged",
+        "export": "User-permission mapping exportable to Excel/PDF",
+        "audit_log_fields": [
+          "Admin ID",
+          "Timestamp",
+          "Old Value",
+          "New Value"
+        ]
+      }
+    },
+    {
+      "id": "US-21",
+      "title": "Access Personalized Dashboard",
+      "module": "Users & Permissions Management",
+      "roles": [
+        "Admin",
+        "Purchasing Manager",
+        "Inventory Manager",
+        "Finance Manager",
+        "Staff"
+      ],
+      "goal": "Access a personalized dashboard customized to assigned permissions for quick access to relevant actions, notifications, and insights.",
+      "acceptance_criteria": {
+        "customization": "Dashboard dynamically shows modules, quick actions, and insights per role",
+        "unauthorized_modules": "Do not appear (no greyed-out placeholders)",
+        "components": {
+          "quick_actions": "Shortcut buttons (Create PO, Approve PR, Add Vendor, etc.)",
+          "notifications_center": {
+            "real_time": true,
+            "filterable_by": "category"
+          },
+          "navigation": "Side menu/collapsible panel tailored to role",
+          "analytics_cards": {
+            "Admin": [
+              "Active Users",
+              "Pending Approvals",
+              "Audit Flags"
+            ],
+            "Purchasing Manager": [
+              "Top Suppliers",
+              "Open POs",
+              "Pending PR Approvals"
+            ],
+            "Finance": [
+              "Unpaid Invoices",
+              "Monthly Spend",
+              "Tax Breakdown"
+            ],
+            "Inventory Manager": [
+              "Stock at Risk",
+              "Expiring Items",
+              "Fast-moving Materials"
+            ]
+          }
+        },
+        "performance": {
+          "load_time_seconds": 2,
+          "analytics_refresh_interval_seconds": 30
+        },
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Timestamp"
+        ]
+      }
+    },
+    {
+      "id": "US-55",
+      "title": "View & Manage User Profile Details",
+      "module": "Users & Permissions Management",
+      "roles": [
+        "All system users"
+      ],
+      "goal": "Have a dedicated profile section to view, update, or manage personal and account details easily.",
+      "acceptance_criteria": {
+        "profile_fields": [
+          "Employee Full Name",
+          "Employee ID",
+          "Username",
+          "Email",
+          "Job Title",
+          "Profile Image",
+          "System Role",
+          "Department",
+          "Recent Activity (own audit log only)"
+        ],
+        "actions": {
+          "edit": "User can edit/complete their own data",
+          "change_password": {
+            "ui": "Popup with New Password + Confirm Password",
+            "validation": "Both fields must match"
+          }
+        },
+        "access_restriction": "User can only view and edit their own profile",
+        "navbar_icon": {
+          "hover_shows": [
+            "Username",
+            "Role",
+            "Full Name"
+          ],
+          "click_action": "Redirects to Profile page"
+        }
+      }
+    }
+  ]
+}

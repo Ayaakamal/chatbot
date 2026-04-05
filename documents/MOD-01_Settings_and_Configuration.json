@@ -1,0 +1,678 @@
+{
+  "module_id": "MOD-01",
+  "module_name": "Settings & Configuration",
+  "description": "Core system setup for categories, brands, products, departments, units, reasons and automation toggles",
+  "stories": [
+    {
+      "id": "US-01",
+      "title": "Category & Subcategory Management",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Super Admin",
+        "Purchasing Manager"
+      ],
+      "goal": "Create, manage, and structure categories and subcategories for procurement items so that items can be properly organized, easily searchable, and consistently used across the system.",
+      "integration_note": "Applied only if no integration with inventory. If integrated, categories are auto-imported as a dropdown list.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Super Admin",
+            "Purchasing Manager"
+          ],
+          "view_only": [
+            "All other staff"
+          ]
+        },
+        "category_creation": {
+          "name": {
+            "required": true,
+            "max_chars": 50,
+            "unique": true
+          },
+          "subcategories": "Can be added at creation time or later",
+          "created_at": "Auto-timestamped",
+          "last_updated": "Auto-timestamped on edit; equals created_at on creation",
+          "status": {
+            "options": [
+              "active",
+              "inactive"
+            ],
+            "default": "active"
+          }
+        },
+        "subcategory_creation": {
+          "name": {
+            "required": true,
+            "max_chars": 50
+          },
+          "uniqueness": "Must be unique within its parent category only"
+        },
+        "deletion_rules": {
+          "category_can_delete_if": [
+            "No subcategories attached",
+            "Not linked to any products"
+          ],
+          "subcategory_can_delete_if": [
+            "Not linked to any products"
+          ],
+          "if_linked": {
+            "behavior": "Soft delete",
+            "result": "Marked inactive (pending)",
+            "system_message": "This category is now inactive. Existing items remain linked, but they cannot be chosen for new assignments."
+          }
+        },
+        "table_view": {
+          "columns": [
+            "Category name (collapsible)",
+            "Created On",
+            "Last Updated",
+            "Created By",
+            "Status",
+            "Options"
+          ],
+          "sorting": "Last Updated descending",
+          "pagination": "Server-side"
+        },
+        "search_and_filter": {
+          "search_by": [
+            "name"
+          ],
+          "filter_by": [
+            "category name",
+            "subcategory name",
+            "creation date",
+            "last modified date"
+          ]
+        },
+        "dropdown_usage": [
+          "Product Management",
+          "Vendor Categorisation"
+        ],
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Action Type",
+          "Timestamp",
+          "Old Value",
+          "New Value"
+        ]
+      }
+    },
+    {
+      "id": "US-02",
+      "title": "Brand Management",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Super Admin",
+        "Purchasing Manager"
+      ],
+      "goal": "Create and manage brands separately from vendors so that products can be associated with the correct brand identity.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Super Admin",
+            "Purchasing Manager"
+          ],
+          "view_only": [
+            "All other staff"
+          ]
+        },
+        "brand_creation": {
+          "name": {
+            "required": true,
+            "unique": true
+          },
+          "optional_fields": [
+            "Brand logo (max 2MB)",
+            "Description/Notes"
+          ],
+          "status": {
+            "options": [
+              "active",
+              "inactive"
+            ],
+            "default": "active"
+          },
+          "timestamps": [
+            "created_at",
+            "last_updated"
+          ]
+        },
+        "deletion_rules": {
+          "no_linked_products": "Full deletion allowed",
+          "linked_products": {
+            "behavior": "Soft delete",
+            "result": "Marked inactive",
+            "system_message": "This brand is now inactive. Existing products remain linked, but it cannot be used for new assignments."
+          }
+        },
+        "dropdown_usage": [
+          "Product Management",
+          "Purchase Requests"
+        ],
+        "dropdown_ordering": "Alphabetical",
+        "note": "Brands are linked to products, NOT to vendors or categories.",
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Action Type",
+          "Timestamp",
+          "Old Value",
+          "New Value"
+        ]
+      }
+    },
+    {
+      "id": "US-03",
+      "title": "Product Management (Stock Management)",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Super Admin",
+        "Purchasing Manager"
+      ],
+      "goal": "Add new products with full details, validations, and classification so products are uniquely identifiable, properly categorized, and usable across procurement workflows.",
+      "integration_note": "Applied only if no integration with inventory. If integrated, products are auto-imported as a dropdown list.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Super Admin",
+            "Purchasing Manager"
+          ],
+          "view_only": [
+            "Other staff (unless granted permissions)"
+          ]
+        },
+        "product_attributes": {
+          "id": {
+            "auto_generated": true,
+            "read_only": true
+          },
+          "name": {
+            "required": true,
+            "unique": true
+          },
+          "category": {
+            "required": true,
+            "source": "dropdown"
+          },
+          "subcategory": {
+            "required": false,
+            "source": "dropdown filtered by category"
+          },
+          "sku": {
+            "required": false,
+            "auto_generated": true,
+            "unique": true,
+            "editable": true,
+            "note": "Same as serial number"
+          },
+          "brand": {
+            "required": true,
+            "source": "dropdown"
+          },
+          "barcode": {
+            "required": false,
+            "unique_if_provided": true
+          },
+          "based_on_stock_market": {
+            "type": "boolean",
+            "default": false
+          },
+          "average_market_price": {
+            "required_if": "based_on_stock_market=true",
+            "decimals": 2
+          },
+          "current_inventory_quantity": {
+            "required": true,
+            "min": 0
+          },
+          "min_threshold": {
+            "required": true
+          },
+          "max_threshold": {
+            "required": true,
+            "validation": "min_threshold < max_threshold"
+          },
+          "image": {
+            "required": false,
+            "validated": true
+          },
+          "note": {
+            "required": false,
+            "type": "free text"
+          },
+          "base_unit": true,
+          "is_expiring": {
+            "type": "boolean",
+            "default": false
+          },
+          "expiry_fields_if_true": [
+            "Expiry Date",
+            "Validity Period (auto-calculated)"
+          ],
+          "status": {
+            "options": [
+              "active",
+              "inactive"
+            ],
+            "default": "active"
+          },
+          "timestamps": [
+            "created_at",
+            "last_updated"
+          ]
+        },
+        "product_variants": {
+          "description": "Each product has variants per brand",
+          "example": "Water product -> Aqua variant, Dasani variant, Nestle variant",
+          "editing": "Targets one specific brand variant; others are read-only",
+          "deletion": "Deleting last variant removes the entire product entity"
+        },
+        "deletion_rules": {
+          "no_linked_records": "Full deletion allowed",
+          "linked_to_po_pr_so": {
+            "behavior": "Soft delete",
+            "result": "Marked inactive",
+            "system_message": "This product is now inactive. It remains in existing records but cannot be used in new transactions."
+          }
+        },
+        "search_and_filter": {
+          "search_by": [
+            "Name",
+            "Brand",
+            "Category",
+            "Subcategory"
+          ],
+          "filter_by": [
+            "Category",
+            "Subcategory",
+            "Brand",
+            "Status",
+            "Created At",
+            "Last Updated"
+          ]
+        },
+        "dropdown_usage": [
+          "Purchase Requests",
+          "Purchase Orders",
+          "Supply Orders",
+          "DSP Management",
+          "Pricing Deals"
+        ],
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Action Type",
+          "Timestamp",
+          "Old Value",
+          "New Value"
+        ]
+      }
+    },
+    {
+      "id": "US-04",
+      "title": "Department Management",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Super Admin",
+        "HR/Operations Manager"
+      ],
+      "goal": "Define and manage department names so users can select their department when creating purchase requests or other documents.",
+      "integration_note": "Applied only if no integration with HR. If integrated, departments are auto-imported.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Super Admin",
+            "HR/Operations Manager"
+          ],
+          "view_only": [
+            "Other users (unless granted permissions)"
+          ]
+        },
+        "department_creation": {
+          "name": {
+            "required": true,
+            "unique": true
+          },
+          "description": {
+            "required": false,
+            "type": "free text"
+          },
+          "status": {
+            "options": [
+              "active",
+              "inactive"
+            ],
+            "default": "active"
+          },
+          "timestamps": [
+            "created_at",
+            "last_updated"
+          ]
+        },
+        "deletion_rules": {
+          "no_linked_users_or_prs": "Full deletion allowed",
+          "linked": {
+            "behavior": "Soft delete",
+            "result": "Marked inactive",
+            "system_message": "This department is now inactive. Existing associations remain, but it cannot be used for new assignments."
+          }
+        },
+        "table_view": {
+          "columns": [
+            "Department Name",
+            "Status",
+            "Created On",
+            "Last Updated",
+            "Options"
+          ],
+          "sorting": "Last Updated descending",
+          "pagination": "Server-side",
+          "ordering": "Alphabetical"
+        },
+        "filter_by": [
+          "Status (active/inactive)",
+          "Creation date",
+          "Last modified date"
+        ],
+        "dropdown_usage": [
+          "Purchase Request creation"
+        ],
+        "note": "Departments acknowledge requesters only — no effect on approval workflow at this stage."
+      }
+    },
+    {
+      "id": "US-05",
+      "title": "Base Units Configuration",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Super Admin",
+        "Purchasing Manager"
+      ],
+      "goal": "Define standard measurement units (kg, g, boxes, bottles, pieces) so users can consistently specify item quantities across procurement workflows.",
+      "integration_note": "Applied only if no integration with inventory.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Super Admin",
+            "Purchasing Manager"
+          ],
+          "select_only": [
+            "Other users"
+          ]
+        },
+        "unit_creation": {
+          "name": {
+            "required": true,
+            "unique": true,
+            "max_chars": 50
+          },
+          "abbreviation": {
+            "required": false,
+            "unique": true,
+            "max_chars": 5
+          },
+          "status": {
+            "options": [
+              "active",
+              "inactive"
+            ],
+            "default": "active"
+          },
+          "timestamps": [
+            "created_at",
+            "last_updated"
+          ]
+        },
+        "deletion_rules": {
+          "no_links": "Full deletion allowed",
+          "linked_to_pr_product_so": {
+            "behavior": "Soft delete",
+            "result": "Marked inactive",
+            "system_message": "This unit is now inactive. It remains in existing records but cannot be used for new assignments."
+          }
+        },
+        "dropdown_behavior": {
+          "ordering": "Alphabetical",
+          "inactive_units": "Hidden from new assignments; shown greyed-out in historical records"
+        },
+        "dropdown_usage": [
+          "Product Management",
+          "Inventory Management",
+          "Pricing Deals",
+          "Purchase Requests",
+          "Supply Orders"
+        ],
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Action Type",
+          "Timestamp"
+        ]
+      }
+    },
+    {
+      "id": "US-06",
+      "title": "Manage Reasons for Purchase Requests",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Super Admin",
+        "Purchasing Manager"
+      ],
+      "goal": "Define and manage standardized reasons for purchase requests so departments must select a clear justification whenever they create a PR.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Super Admin",
+            "Purchasing Manager"
+          ],
+          "select_only": [
+            "All other users"
+          ]
+        },
+        "default_preloaded_reasons": [
+          "Shortage of Stock",
+          "Special Needs / One-time Requirement",
+          "Seasonal Demand",
+          "Damaged / Expired Stock Replacement",
+          "Expansion / New Project Requirement",
+          "Promotional or Marketing Activities",
+          "Operational / Maintenance Requirement",
+          "Other (Free Text)"
+        ],
+        "other_option": "If selected, a mandatory free-text field appears",
+        "deletion_rules": {
+          "no_linked_requests": "Full deletion allowed",
+          "linked": {
+            "behavior": "Soft delete",
+            "result": "Marked inactive",
+            "system_message": "This reason is now inactive. It remains in existing records but cannot be used for new requests."
+          }
+        },
+        "validations": {
+          "name_max_chars": 100,
+          "inactive_reasons": "Hidden from dropdowns"
+        },
+        "usage": "Mandatory field on Purchase Request creation"
+      }
+    },
+    {
+      "id": "US-07",
+      "title": "Manage Reasons for Request Rejection",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Super Admin",
+        "Purchasing Manager",
+        "Operational Manager"
+      ],
+      "goal": "Define and manage a list of rejection reasons for purchase requests so managers can provide consistent, clear justifications when rejecting requests.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Super Admin",
+            "Purchasing Manager",
+            "Operational Manager"
+          ],
+          "view_only": [
+            "Other users (when their request is rejected)"
+          ]
+        },
+        "default_rejection_reasons": [
+          "Budget Constraints",
+          "Item Already Available in Stock",
+          "Incorrect or Duplicate Request",
+          "Not Aligned with Company Policy",
+          "Insufficient Justification Provided",
+          "Other (Free Text)"
+        ],
+        "deletion_rules": {
+          "no_linked_requests": "Full deletion allowed",
+          "linked": {
+            "behavior": "Soft delete",
+            "result": "Marked inactive"
+          }
+        },
+        "validations": {
+          "name_max_chars": 100,
+          "other_text_input": "Mandatory if Other is selected"
+        },
+        "usage": "Mandatory dropdown when Purchasing Manager rejects a request"
+      }
+    },
+    {
+      "id": "US-08",
+      "title": "Return Reasons Setup",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Super Admin",
+        "Purchasing Manager"
+      ],
+      "goal": "Configure standard return reasons so QA testers and purchasing managers select from a consistent list when processing returns.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "full_crud": [
+            "Super Admin",
+            "Purchasing Manager"
+          ],
+          "view_select_only": [
+            "QA staff",
+            "Other staff"
+          ]
+        },
+        "reason_creation": {
+          "name": {
+            "required": true,
+            "unique": true,
+            "min_chars": 3,
+            "max_chars": 100,
+            "allowed_special_chars": [
+              "spaces",
+              "hyphens",
+              "parentheses"
+            ]
+          },
+          "description": {
+            "required": false
+          }
+        },
+        "deletion_rules": {
+          "no_linked_returns": "Full deletion allowed",
+          "linked": {
+            "behavior": "Soft delete",
+            "result": "Marked inactive",
+            "system_message": "This return reason is now inactive. It remains in existing records but cannot be used for new returns."
+          }
+        },
+        "dropdown_behavior": {
+          "ordering": "Alphabetical",
+          "shows": "Active reasons only",
+          "searchable": true
+        },
+        "other_option": {
+          "triggers": "Mandatory free-text field",
+          "min_chars": 5,
+          "max_chars": 250
+        },
+        "usage": "Mandatory when creating or approving/rejecting a return request",
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Action Type",
+          "Timestamp",
+          "Old Value",
+          "New Value"
+        ]
+      }
+    },
+    {
+      "id": "US-53",
+      "title": "Toggle Auto PO Generation from PR",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Super Admin",
+        "Purchasing Manager"
+      ],
+      "goal": "Configure a setting to enable or disable automatic Purchase Order generation from accepted Purchase Requests.",
+      "acceptance_criteria": {
+        "role_based_access": {
+          "toggle_access": [
+            "Super Admin",
+            "Purchasing Manager",
+            "Staff with permission"
+          ],
+          "view_only": [
+            "Purchasing Staff",
+            "Department Staff"
+          ]
+        },
+        "setting_when_enabled": {
+          "trigger": "PR acceptance",
+          "behavior": "System auto-creates one or more draft POs grouped by product category",
+          "example": "PR with Dairy + Vegetables -> PO-Dairy-001 + PO-Vegetables-001",
+          "po_status": "Draft",
+          "editable_by": "Users with Edit Purchase Order permission"
+        },
+        "setting_when_disabled": {
+          "behavior": "No POs auto-created; Purchasing Manager must manually create POs linked to the PR"
+        },
+        "notifications": {
+          "recipients": [
+            "Purchasing Manager",
+            "Purchasing Staff with PO write permission"
+          ],
+          "message": "Purchase Orders have been auto-generated from Purchase Request [PR ID]. Review and submit them for processing."
+        },
+        "error_handling": "If a category has no linked products/vendors, alert shown; valid categories still processed",
+        "performance": {
+          "max_generation_time_seconds": 2,
+          "max_item_lines_per_pr": 100
+        },
+        "audit_log_fields": [
+          "User ID",
+          "Role",
+          "Action (enabled/disabled)",
+          "Timestamp"
+        ]
+      }
+    },
+    {
+      "id": "US-56",
+      "title": "Support Multiple Units",
+      "module": "Settings & Configuration",
+      "roles": [
+        "Purchasing Manager",
+        "Staff"
+      ],
+      "goal": "Define items with multiple unit types so inventory measurements align with actual purchasing, storage, and consumption practices.",
+      "acceptance_criteria": {
+        "primary_unit": "Each item has one primary unit (e.g., kg, L, pcs)",
+        "alternative_units": "Additional units can be added (e.g., box, bag, bottle) with custom conversion rates",
+        "stock_display": "Inventory always stored in primary unit; viewable in any defined unit",
+        "purchase_requests": "Use additional units",
+        "stock_in": "Done using primary units",
+        "conversion_tracking": "All internal conversions tracked end-to-end",
+        "editability": "Unit settings viewable/editable during item creation or update"
+      }
+    }
+  ]
+}

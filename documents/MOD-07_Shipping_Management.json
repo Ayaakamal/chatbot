@@ -1,0 +1,72 @@
+{
+  "module_id": "MOD-07",
+  "module_name": "Shipping Management",
+  "description": "Vendor-handled, internal self-handled, and third-party shipping company workflows",
+  "stories": [
+    {
+      "id": "US-46",
+      "title": "Vendor-Handled Shipping",
+      "module": "Shipping Management",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Allow vendors to handle shipping and include details in the pricing deal so shipping costs and logistics are transparent and traceable.",
+      "acceptance_criteria": {
+        "vendor_shipping_fields_in_deal": {
+          "shipping_address": {
+            "from": "text field",
+            "to": "text field"
+          },
+          "notes": "Special conditions, restrictions",
+          "shipping_price": {
+            "basis_options": [
+              "per order",
+              "per shipment",
+              "per unit",
+              "free"
+            ]
+          }
+        },
+        "rules": {
+          "auto_applied_on_po_confirmation": true,
+          "reports": "Include breakdown of shipping vs. goods cost",
+          "missing_required_shipping_info": "System blocks deal submission"
+        }
+      }
+    },
+    {
+      "id": "US-47",
+      "title": "Internal (Self-Handled) Shipping",
+      "module": "Shipping Management",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Track when the company manages its own shipping so costs are logged against invoices and not tied to vendor contracts.",
+      "acceptance_criteria": {
+        "marking": "User marks shipment as 'Internal Shipping' in the system",
+        "supporting_documents": "Shipping invoices can be uploaded"
+      }
+    },
+    {
+      "id": "US-48",
+      "title": "Third-Party Shipping Company",
+      "module": "Shipping Management",
+      "roles": [
+        "Purchasing Manager"
+      ],
+      "goal": "Select a shipping company with its own pricing deal so different providers can be compared for cost efficiency.",
+      "acceptance_criteria": {
+        "setup": {
+          "shipping_companies": "Defined as vendors with 'Shipping Service' category",
+          "pricing_deal": "Separate deal per company (per km, per weight, per order, fixed rate)"
+        },
+        "usage_in_po": {
+          "selection": "User selects 'Third-Party Shipping' and chooses a deal during PO confirmation",
+          "auto_applied": true,
+          "separate_invoice": "Generated from shipping vendor and linked to shipment"
+        },
+        "validation": "If no shipping company deal defined -> system blocks selection and prompts setup"
+      }
+    }
+  ]
+}
