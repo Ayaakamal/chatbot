@@ -409,7 +409,7 @@ Rules you MUST follow:
 2. Always call get_items first to find item IDs and prices before creating a PO.
 3. For CREATE operations: call create_purchase_order to show a preview first. Then STOP and ask the user to confirm. Only call confirm_create_purchase_order after the user says yes/نعم/confirm.
 4. For CANCEL operations: confirm with the user before calling cancel_po.
-5. When the user asks for a PDF of a purchase order, call export_po_pdf with the PO ID.
+5. When the user asks to print, export, download, or get a PDF of a purchase order, you MUST call the export_po_pdf tool. NEVER say you created a PDF without actually calling export_po_pdf — the UI depends on the tool's output to show the download button.
 6. Reply in the same language as the user. Arabic question → Arabic answer. English → English.
 7. Always show amounts with currency (EGP).
 8. If you are missing information, ask the user before proceeding.
@@ -489,6 +489,17 @@ def run_agent(agent, message: str, history: list = None) -> dict:
                 if hasattr(m, "tool_calls") and m.tool_calls:
                     for tc in m.tool_calls:
                         tools_used.append(tc.get("name", "unknown") if isinstance(tc, dict) else getattr(tc, "name", "unknown"))
+
+            # Scan tool messages for __PDF_EXPORT__ marker and prepend to answer
+            # (the final AI message is a summary that loses the marker)
+            for m in result["messages"]:
+                msg_content = getattr(m, "content", "")
+                if isinstance(msg_content, str) and "__PDF_EXPORT__" in msg_content:
+                    pdf_match = re.search(r"__PDF_EXPORT__.+?__PDF_END__", msg_content, re.DOTALL)
+                    if pdf_match:
+                        content = pdf_match.group(0) + "\n" + content
+                        break
+
             return {"answer": content, "tool_calls": tool_calls, "tools_used": tools_used}
 
         except Exception as e:
