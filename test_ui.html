@@ -1316,6 +1316,66 @@
     win.document.close();
   }
 
+  function openReportPdf(report) {
+    const headers = report.rows.length > 0 ? Object.keys(report.rows[0]) : [];
+    const thRow = headers.map(h => `<th>${h}</th>`).join('');
+    const rows = report.rows.map(r => '<tr>' + headers.map(h => `<td>${r[h] || '-'}</td>`).join('') + '</tr>').join('');
+    const summaryHtml = report.summary ? Object.entries(report.summary).map(([k,v]) => `<div class="meta-row"><span class="meta-label">${k}:</span><span class="meta-val" style="font-weight:700;color:#145055">${v}</span></div>`).join('') : '';
+
+    const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>${report.title}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cairo', sans-serif; color: #1f2937; background: #fff; padding: 32px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #145055; padding-bottom: 16px; margin-bottom: 24px; }
+  .co-name { font-size: 1.4rem; font-weight: 700; color: #145055; }
+  .doc-title { font-size: 1.1rem; font-weight: 700; color: #145055; text-align: left; }
+  .doc-date { font-size: .85rem; color: #6b7280; text-align: left; }
+  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 24px; background: #f8fafc; padding: 16px; border-radius: 8px; }
+  .meta-row { display: flex; gap: 8px; font-size: .88rem; }
+  .meta-label { font-weight: 700; color: #374151; min-width: 140px; }
+  .meta-val { color: #1f2937; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th { background: #145055; color: #fff; padding: 10px 12px; font-size: .82rem; white-space: nowrap; }
+  td { padding: 9px 12px; font-size: .82rem; border-bottom: 1px solid #e5e7eb; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  .footer { margin-top: 32px; display: flex; justify-content: space-between; font-size: .78rem; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+  .print-btn { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #145055; color: #fff; border: none; padding: 12px 32px; border-radius: 8px; font-family: inherit; font-size: 1rem; cursor: pointer; }
+  @media print { .print-btn { display: none; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="co-name">🏢 نظام المشتريات ERP</div>
+    <div style="font-size:.8rem;color:#6b7280;margin-top:4px">التقارير والتحليلات</div>
+  </div>
+  <div>
+    <div class="doc-title">${report.title}</div>
+    <div class="doc-date">${report.date}</div>
+  </div>
+</div>
+${summaryHtml ? '<div class="summary">' + summaryHtml + '</div>' : ''}
+<table>
+  <thead><tr>${thRow}</tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="footer">
+  <span>تم الإنشاء بواسطة: نظام ERP للمشتريات</span>
+  <span>تاريخ الطباعة: ${new Date().toLocaleString('ar-EG')}</span>
+</div>
+<button class="print-btn" onclick="window.print()">🖨 طباعة / حفظ PDF</button>
+</body></html>`;
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    win.document.write(html);
+    win.document.close();
+  }
+
   // ── Agent ─────────────────────────────────────────────
   async function sendAgent() {
     const input = document.getElementById('agent-input');
@@ -1337,15 +1397,16 @@
       typing.remove();
       let answer = data.answer || 'لا يوجد رد';
 
-      // ── PDF export detection ──────────────────────────
+      // ── PDF / Report export detection ──────────────────
       const pdfMatch = answer.match(/__PDF_EXPORT__(.+?)__PDF_END__/s);
+      const rptMatch = answer.match(/__REPORT_PDF__(.+?)__REPORT_END__/s);
       let displayAnswer = answer;
+
       if (pdfMatch) {
         let po = null;
         try { po = JSON.parse(pdfMatch[1]); } catch {}
         displayAnswer = answer.replace(/__PDF_EXPORT__.+?__PDF_END__/s, '').trim()
           || `تم تجهيز ملف PDF لأمر التوريد ${po?.id || ''}.`;
-
         const botDiv = appendMsg(msgs, displayAnswer, 'bot');
         if (po) {
           const pdfBtn = document.createElement('button');
@@ -1354,6 +1415,20 @@
           pdfBtn.onclick = () => openPOPdf(po);
           botDiv.appendChild(pdfBtn);
           openPOPdf(po);
+        }
+      } else if (rptMatch) {
+        let report = null;
+        try { report = JSON.parse(rptMatch[1]); } catch {}
+        displayAnswer = answer.replace(/__REPORT_PDF__.+?__REPORT_END__/s, '').trim()
+          || `تم تجهيز تقرير ${report?.title || ''}.`;
+        const botDiv = appendMsg(msgs, displayAnswer, 'bot');
+        if (report) {
+          const rptBtn = document.createElement('button');
+          rptBtn.style.cssText = 'margin-top:10px;display:block;background:#DA5B30;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.85rem;';
+          rptBtn.innerHTML = '📊 فتح / طباعة التقرير';
+          rptBtn.onclick = () => openReportPdf(report);
+          botDiv.appendChild(rptBtn);
+          openReportPdf(report);
         }
       } else {
         appendMsg(msgs, answer, 'bot');
@@ -1479,6 +1554,7 @@
       let answer = data.answer || 'لا يوجد رد';
 
       const pdfMatch = answer.match(/__PDF_EXPORT__(.+?)__PDF_END__/s);
+      const rptMatch = answer.match(/__REPORT_PDF__(.+?)__REPORT_END__/s);
       let displayAnswer = answer;
       if (pdfMatch) {
         let po = null;
@@ -1493,6 +1569,20 @@
           pdfBtn.onclick = () => openPOPdf(po);
           botDiv.appendChild(pdfBtn);
           openPOPdf(po);
+        }
+      } else if (rptMatch) {
+        let report = null;
+        try { report = JSON.parse(rptMatch[1]); } catch {}
+        displayAnswer = answer.replace(/__REPORT_PDF__.+?__REPORT_END__/s, '').trim()
+          || `تم تجهيز تقرير ${report?.title || ''}.`;
+        const botDiv = fwAppendMsg(msgs, displayAnswer, 'bot');
+        if (report) {
+          const rptBtn = document.createElement('button');
+          rptBtn.style.cssText = 'margin-top:8px;display:block;background:#DA5B30;color:#fff;border:none;padding:6px 16px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.78rem;';
+          rptBtn.innerHTML = '📊 فتح / طباعة التقرير';
+          rptBtn.onclick = () => openReportPdf(report);
+          botDiv.appendChild(rptBtn);
+          openReportPdf(report);
         }
       } else {
         fwAppendMsg(msgs, answer, 'bot');

@@ -583,6 +583,55 @@ async def agent_endpoint(request: AgentRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── Nightly Stock Check Endpoint ────────────────────────
+
+@app.get("/stock-check")
+async def stock_check():
+    """
+    Nightly stock check — returns all items below minimum level
+    with recommended order quantities grouped by supplier.
+    Call this from a cron job (e.g. 2am nightly) or manually.
+    In production, this triggers WhatsApp/email alerts.
+    """
+    try:
+        from agent import MOCK_INVENTORY, MOCK_RECIPES, MOCK_DAILY_SALES
+        alerts = []
+        total_cost = 0.0
+        supplier_groups = {}
+
+        for item in MOCK_INVENTORY:
+            if item["current_stock"] < item["min_level"]:
+                deficit = item["min_level"] - item["current_stock"]
+                order_qty = round(deficit * 1.5)
+                cost = round(order_qty * item["cost_per_unit"], 2)
+                total_cost += cost
+                supplier = item["supplier"]
+                if supplier not in supplier_groups:
+                    supplier_groups[supplier] = []
+                supplier_groups[supplier].append({
+                    "item": item["name"],
+                    "current": item["current_stock"],
+                    "minimum": item["min_level"],
+                    "order_qty": order_qty,
+                    "unit": item["unit"],
+                    "cost": cost
+                })
+                alerts.append(item["name"])
+
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "low_stock_count": len(alerts),
+            "total_estimated_cost": round(total_cost, 2),
+            "low_stock_items": alerts,
+            "orders_by_supplier": supplier_groups,
+            "whatsapp_status": "mock — would send alert to manager",
+            "message": f"تنبيه: {len(alerts)} أصناف تحت الحد الأدنى" if alerts else "✅ جميع الأصناف فوق الحد الأدنى"
+        }
+    except Exception as e:
+        logger.error(f"Stock check failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ─── Analytics Endpoints ─────────────────────────────────
 
 @app.get("/analytics/summary")
