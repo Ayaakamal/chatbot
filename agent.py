@@ -228,15 +228,16 @@ def get_po_details(po_id: str) -> str:
 @tool
 def create_purchase_order(supplier_id: int, item_ids: str, quantities: str) -> str:
     """
-    Preview a new purchase order BEFORE saving it.
-    Always call this first to show the user a summary before confirming.
+    Create a draft purchase order and save it immediately with status 'draft'.
+    Always call this first — it saves the PO as a draft and returns the po_id.
+    Then show the user a summary and ask them to confirm using confirm_create_purchase_order(po_id).
 
     Parameters:
     - supplier_id: numeric supplier ID (get it from get_suppliers first)
     - item_ids: comma-separated item IDs e.g. "101,102"
     - quantities: comma-separated quantities matching item_ids e.g. "50,10"
 
-    Returns a preview with total amount. User must confirm before it is saved.
+    Returns the po_id of the draft. User must confirm with confirm_create_purchase_order(po_id).
     """
     supplier = next((s for s in MOCK_SUPPLIERS if s["id"] == supplier_id), None)
     if not supplier:
@@ -264,69 +265,49 @@ def create_purchase_order(supplier_id: int, item_ids: str, quantities: str) -> s
             "subtotal":   subtotal
         })
 
-    return json.dumps({
-        "status":  "PREVIEW — NOT SAVED YET",
-        "supplier": {"id": supplier_id, "name": supplier["name"]},
-        "items":   order_items,
-        "total":   total,
-        "currency": supplier["currency"],
-        "action_required": "Ask the user to confirm before calling confirm_create_purchase_order"
-    }, ensure_ascii=False, indent=2)
-
-
-@tool
-def confirm_create_purchase_order(supplier_id: int, item_ids: str, quantities: str) -> str:
-    """
-    Actually save the purchase order after the user explicitly confirms.
-    Use this ONLY when the user says 'yes', 'نعم', 'confirm', or similar confirmation.
-    Do NOT call this without user confirmation first.
-
-    Same parameters as create_purchase_order:
-    - supplier_id: numeric supplier ID
-    - item_ids: comma-separated item IDs
-    - quantities: comma-separated quantities
-    """
-    supplier = next((s for s in MOCK_SUPPLIERS if s["id"] == supplier_id), None)
-    if not supplier:
-        return json.dumps({"error": f"Supplier ID {supplier_id} not found"})
-
-    try:
-        ids  = [int(x.strip()) for x in item_ids.split(",")]
-        qtys = [int(x.strip()) for x in quantities.split(",")]
-    except ValueError:
-        return json.dumps({"error": "item_ids and quantities must be comma-separated numbers"})
-
-    order_items = []
-    total = 0.0
-    for item_id, qty in zip(ids, qtys):
-        item = next((i for i in MOCK_ITEMS if i["id"] == item_id), None)
-        if not item:
-            return json.dumps({"error": f"Item ID {item_id} not found"})
-        subtotal = item["unit_price"] * qty
-        total += subtotal
-        order_items.append({
-            "item_id":    item_id,
-            "name":       item["name"],
-            "qty":        qty,
-            "unit_price": item["unit_price"],
-            "subtotal":   subtotal
-        })
-
     po_number = f"PO-2026-{random.randint(100, 999)}"
-    new_po = {
+    draft_po = {
         "id":       po_number,
         "supplier": supplier["name"],
-        "status":   "pending_approval",
+        "status":   "draft",
         "total":    total,
         "currency": supplier["currency"],
         "items":    order_items
     }
-    MOCK_POS.append(new_po)   # ← actually save to the list
+    MOCK_POS.append(draft_po)  # saved as draft immediately
+
+    return json.dumps({
+        "status":          "draft",
+        "po_id":           po_number,
+        "supplier":        supplier["name"],
+        "items":           order_items,
+        "total":           total,
+        "currency":        supplier["currency"],
+        "action_required": f"Show this summary to the user and ask them to confirm. If they say yes, call confirm_create_purchase_order with po_id='{po_number}'"
+    }, ensure_ascii=False, indent=2)
+
+
+@tool
+def confirm_create_purchase_order(po_id: str) -> str:
+    """
+    Confirm a draft purchase order and change its status to 'pending_approval'.
+    Call this ONLY after the user explicitly says yes/نعم/confirm/تأكيد.
+
+    Parameters:
+    - po_id: the purchase order ID returned by create_purchase_order (e.g. 'PO-2026-123')
+    """
+    po = next((p for p in MOCK_POS if p["id"] == po_id), None)
+    if not po:
+        return json.dumps({"error": f"Purchase order '{po_id}' not found."})
+    if po["status"] != "draft":
+        return json.dumps({"error": f"Purchase order '{po_id}' is not a draft (status: {po['status']}). Only drafts can be confirmed."})
+
+    po["status"] = "pending_approval"
 
     return json.dumps({
         "status":  "created",
-        "po_id":   po_number,
-        "message": f"✅ تم إنشاء أمر التوريد {po_number} بنجاح — الحالة: في انتظار الموافقة"
+        "po_id":   po_id,
+        "message": f"✅ تم إنشاء أمر التوريد {po_id} بنجاح — الحالة: في انتظار الموافقة"
     }, ensure_ascii=False, indent=2)
 
 
@@ -1048,10 +1029,20 @@ INVENTORY & RESTAURANT RULES:
 17. When asked about daily sales or what was sold → call get_daily_sales.
 18. When asked about deliveries or supplier shortages → call get_deliveries.
 
+CRITICAL TOOL USAGE RULES — these are NOT optional. You MUST call the tool, never invent data:
+- User asks to show/list/display suppliers (موردين, اعرض الموردين, قائمة الموردين, etc) → MUST call get_suppliers
+- User asks to show/list/display items, products (أصناف, منتجات, اعرض الأصناف) → MUST call get_items
+- User asks to show/list/display purchase orders (أوامر التوريد, اعرض الأوامر) → MUST call get_purchase_orders
+- User asks to show/list/display invoices (الفواتير, اعرض الفواتير, فواتير متأخرة) → MUST call get_invoices
+- User asks about a specific PO by ID (PO-2026-001) → MUST call get_po_details
+- User asks about a specific supplier → MUST call get_supplier_details or get_supplier_ratings
+- User asks about a specific invoice → MUST call get_invoice_details or get_payment_status
+- For any question about data that lives in the system, ALWAYS call the matching tool. NEVER respond with empty content. NEVER say "I don't have data" without first calling a tool.
+
 Rules you MUST follow:
 1. Always call get_suppliers first to find the supplier ID before creating a PO.
 2. Always call get_items first to find item IDs and prices before creating a PO.
-3. For CREATE operations: call create_purchase_order to show a preview first. Then STOP and ask the user to confirm. Only call confirm_create_purchase_order after the user says yes/نعم/confirm.
+3. For CREATE operations: call create_purchase_order first — it saves a draft and returns a po_id. Show the user the summary from the result, then STOP and ask them to confirm. Only call confirm_create_purchase_order(po_id=...) after the user says yes/نعم/confirm/تأكيد. Pass the po_id exactly as returned by create_purchase_order.
 4. For CANCEL operations: confirm with the user before calling cancel_po.
 5. When the user asks to print, export, download, or get a PDF of a purchase order, you MUST call the export_po_pdf tool. For ANY other report (waste, stock, consumption, sales, deliveries, recipes), you MUST call export_report_pdf with the correct report_type. NEVER say you can't print — always call the appropriate export tool.
 6. Reply in the same language as the user. Arabic question → Arabic answer. English → English.
@@ -1079,6 +1070,36 @@ def build_agent(llm):
 _quota_exhausted_until = 0.0   # Unix timestamp; 0 means not exhausted
 
 
+def _format_tool_result_as_text(raw: str) -> str:
+    """Convert a tool's JSON return value into clean Arabic plain-text the user can read.
+
+    Used as a fallback when Gemini's final summary message is empty after a tool call.
+    """
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return raw  # not JSON — return as-is
+
+    if isinstance(data, dict) and "error" in data:
+        return f"❌ {data['error']}"
+
+    # List of records — render as a simple markdown table
+    if isinstance(data, list) and data and isinstance(data[0], dict):
+        cols = list(data[0].keys())
+        header = "| " + " | ".join(cols) + " |"
+        sep    = "| " + " | ".join("---" for _ in cols) + " |"
+        rows   = ["| " + " | ".join(str(row.get(c, "")) for c in cols) + " |" for row in data]
+        return "إليك النتائج:\n\n" + "\n".join([header, sep, *rows])
+
+    # Single dict — render as bullet lines
+    if isinstance(data, dict):
+        lines = [f"• {k}: {v}" for k, v in data.items()]
+        return "\n".join(lines)
+
+    # Anything else — fall back to the raw string
+    return raw
+
+
 def run_agent(agent, message: str, history: list = None) -> dict:
     """
     Run the ReAct agent.
@@ -1091,7 +1112,7 @@ def run_agent(agent, message: str, history: list = None) -> dict:
     Returns:
         {"answer": str, "tool_calls": int}
     """
-    from langchain_core.messages import HumanMessage, AIMessage
+    from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
     messages = []
 
@@ -1150,24 +1171,69 @@ def run_agent(agent, message: str, history: list = None) -> dict:
                             content = rpt_match.group(0) + "\n" + content
                             break
 
-            # Fallback: if content is empty but tools were called, extract the last tool result
-            if not content.strip() and tool_calls > 0:
+            # Fallback A: if Gemini returned an empty final message, render the last
+            # ToolMessage's JSON as readable text. This handles two cases:
+            #   1. Tool ran but Gemini failed to summarize (common on free-tier quota pressure)
+            #   2. Gemini's content came back as an empty list/string
+            if not content.strip():
+                logger.warning(
+                    f"Empty content from Gemini — scanning {len(result['messages'])} messages for ToolMessage. "
+                    f"Types: {[type(m).__name__ for m in result['messages']]}"
+                )
                 for m in reversed(result["messages"]):
-                    mc = getattr(m, "content", "")
-                    if isinstance(mc, str) and mc.strip() and not mc.startswith("__"):
-                        try:
-                            data = json.loads(mc)
-                            if isinstance(data, list):
-                                content = "إليك النتائج:\n\n" + mc
-                            elif isinstance(data, dict) and "error" not in data:
-                                content = mc
+                    if isinstance(m, ToolMessage):
+                        mc = m.content if isinstance(m.content, str) else str(m.content)
+                        logger.warning(f"Found ToolMessage with {len(mc)} chars. Preview: {mc[:200]}")
+                        if mc.strip() and not mc.startswith("__"):
+                            content = _format_tool_result_as_text(mc)
                             break
-                        except (json.JSONDecodeError, TypeError):
-                            if len(mc) > 20:
-                                content = mc
-                                break
+
+            # Fallback B: empty content AND no tools called → Gemini gave up. Retry
+            # once with an explicit instruction to use the tools.
+            if not content.strip() and tool_calls == 0:
+                logger.warning("No tools called and empty content — retrying with explicit tool instruction")
+                retry_messages = list(messages) + [
+                    HumanMessage(content=(
+                        "يجب عليك استخدام الأدوات المتاحة (tools) للإجابة على هذا السؤال. "
+                        "لا ترد بدون استدعاء الأداة المناسبة. "
+                        "السؤال السابق كان: " + message
+                    ))
+                ]
+                try:
+                    retry_result = agent.invoke({"messages": retry_messages})
+                    retry_final = retry_result["messages"][-1]
+                    retry_content = retry_final.content
+                    if isinstance(retry_content, list):
+                        retry_content = " ".join(
+                            b.get("text", "") if isinstance(b, dict) else str(b)
+                            for b in retry_content
+                        ).strip()
+                    if retry_content and retry_content.strip():
+                        content = retry_content
+                    else:
+                        # Retry also empty → grab last ToolMessage from retry
+                        for m in reversed(retry_result["messages"]):
+                            if isinstance(m, ToolMessage):
+                                mc = m.content if isinstance(m.content, str) else str(m.content)
+                                if mc.strip() and not mc.startswith("__"):
+                                    content = _format_tool_result_as_text(mc)
+                                    break
+                    # Update tool_calls count to include the retry's tools
+                    retry_tc = sum(1 for m in retry_result["messages"] if hasattr(m, "tool_calls") and m.tool_calls)
+                    tool_calls += retry_tc
+                    for m in retry_result["messages"]:
+                        if hasattr(m, "tool_calls") and m.tool_calls:
+                            for tc in m.tool_calls:
+                                tools_used.append(tc.get("name", "unknown") if isinstance(tc, dict) else getattr(tc, "name", "unknown"))
+                except Exception as e:
+                    logger.error(f"Retry attempt failed: {e}")
 
             if not content.strip():
+                logger.error(
+                    f"All fallbacks failed. User msg: '{message}'. "
+                    f"Final message type: {type(result['messages'][-1]).__name__}. "
+                    f"Final content repr: {repr(getattr(result['messages'][-1], 'content', None))[:300]}"
+                )
                 content = "تم تنفيذ الطلب لكن لم يتم إرجاع نتائج. حاول مرة أخرى."
 
             return {"answer": content, "tool_calls": tool_calls, "tools_used": tools_used}

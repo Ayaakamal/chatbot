@@ -127,6 +127,13 @@ def initialize_qa_system():
                 f"No ChromaDB found at '{CHROMA_DB_DIR}'. "
                 "Run ingest.py first to build the database."
             )
+            # Build ReAct agent even without ChromaDB (agent uses mock ERP data, not docs)
+            try:
+                from agent import build_agent
+                react_agent = build_agent(llm_model)
+                logger.info("ReAct agent built successfully (no ChromaDB).")
+            except Exception as e:
+                logger.warning(f"ReAct agent build failed: {e}")
             return False
 
         vector_db = Chroma(
@@ -138,6 +145,13 @@ def initialize_qa_system():
         if count == 0:
             logger.error("ChromaDB exists but is empty. Re-run ingest.py.")
             vector_db = None
+            # Build ReAct agent even without ChromaDB (agent uses mock ERP data, not docs)
+            try:
+                from agent import build_agent
+                react_agent = build_agent(llm_model)
+                logger.info("ReAct agent built successfully (no ChromaDB).")
+            except Exception as e:
+                logger.warning(f"ReAct agent build failed: {e}")
             return False
 
         logger.info(f"Loaded ChromaDB with {count} child chunks.")
@@ -264,6 +278,14 @@ Answer Rules:
 - If the context does not contain enough information, say: "المعلومات غير متوفرة في الوثائق الحالية" (Arabic) or "This information is not available in the current documents." (English).
 - Never invent steps, procedures, or details not found in the context.
 
+Formatting Rules (very important):
+- Output PLAIN TEXT only. Do NOT use any markdown symbols.
+- Never use: ** or __ for bold, ## or # for headings, ` for code, --- for separators, or any other markdown.
+- For lists use the bullet character "•" at the start of each line, or numbered items "1." "2." "3.".
+- For section titles, write the title on its own line followed by ":" — no asterisks, no hashes.
+- Use blank lines to separate sections so the answer is easy to scan.
+- Keep the answer clean and organized in plain Arabic (or English) text only.
+
 Conversation History:
 {history}
 
@@ -348,6 +370,36 @@ Answer:"""
     return graph.compile()
 
 
+def warmup_system():
+    """Pre-warm the QA chain and ReAct agent so the first user request is fast.
+
+    First-call latency comes from: Gemini connection handshake, PyTorch kernel
+    compilation in the CrossEncoder reranker, and LangGraph/agent cold start.
+    Running one tiny query through each pipeline at startup eliminates all of
+    them. Bypasses analytics logging (no endpoint involved).
+    """
+    if qa_system:
+        try:
+            t0 = _time.time()
+            qa_system.invoke({
+                "question": "مرحبا",
+                "history": "",
+                "active_entity": "Purchases",
+            })
+            logger.info(f"Warmup: QA pipeline ready ({int((_time.time() - t0) * 1000)}ms)")
+        except Exception as e:
+            logger.warning(f"Warmup: QA pipeline failed (non-fatal): {e}")
+
+    if react_agent:
+        try:
+            from agent import run_agent
+            t0 = _time.time()
+            run_agent(react_agent, "مرحبا", [])
+            logger.info(f"Warmup: ReAct agent ready ({int((_time.time() - t0) * 1000)}ms)")
+        except Exception as e:
+            logger.warning(f"Warmup: ReAct agent failed (non-fatal): {e}")
+
+
 # Lifespan event handler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -356,12 +408,19 @@ async def lifespan(app: FastAPI):
     init_analytics_db()
     success = initialize_qa_system()
     if success:
-        logger.info("System ready.")
+        logger.info("System ready. Warming up pipelines...")
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, warmup_system)
+        logger.info("Warmup complete. Ready to serve requests.")
     else:
         logger.warning(
             "System started without a knowledge base. "
             "Run ingest.py to build the database, then restart."
         )
+        # Warm up the agent even if QA is unavailable (agent uses mock data)
+        if react_agent:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, warmup_system)
     yield
     # Shutdown
     logger.info("Shutting down Document Q&A System...")

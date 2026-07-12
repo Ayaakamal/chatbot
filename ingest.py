@@ -52,23 +52,76 @@ CHILD_CHUNK_OVERLAP = 50
 SUPPORTED_EXTENSIONS = {'.pdf', '.txt', '.md', '.docx', '.csv', '.xlsx', '.xls', '.parquet', '.json'}
 
 
-def _flatten_json(obj, prefix="") -> str:
-    """Recursively flatten a JSON object into readable key: value lines."""
+def _readable_value(obj, indent: int = 0) -> str:
+    """Convert a JSON value into clean, readable text (no dot-notation paths)."""
+    pad = "  " * indent
     lines = []
     if isinstance(obj, dict):
         for k, v in obj.items():
-            label = f"{prefix}.{k}" if prefix else k
-            lines.append(_flatten_json(v, label))
+            if isinstance(v, (dict, list)):
+                lines.append(f"{pad}{k}:")
+                lines.append(_readable_value(v, indent + 1))
+            else:
+                lines.append(f"{pad}{k}: {v}")
     elif isinstance(obj, list):
-        for i, item in enumerate(obj):
-            lines.append(_flatten_json(item, f"{prefix}[{i}]"))
+        for item in obj:
+            if isinstance(item, (dict, list)):
+                lines.append(_readable_value(item, indent))
+            else:
+                lines.append(f"{pad}- {item}")
     else:
-        lines.append(f"{prefix}: {obj}")
-    return "\n".join(lines)
+        lines.append(f"{pad}{obj}")
+    return "\n".join(filter(None, lines))
+
+
+def _story_to_text(module_id: str, module_name: str, module_desc: str, story: dict) -> str:
+    """Convert one ERP user story into a rich, human-readable text block."""
+    parts = [
+        f"الوحدة: {module_name} ({module_id})",
+        f"وصف الوحدة: {module_desc}",
+        f"رقم القصة: {story.get('id', '')}",
+        f"عنوان القصة: {story.get('title', '')}",
+    ]
+    if story.get('module'):
+        parts.append(f"الوحدة الفرعية: {story['module']}")
+    roles = story.get('roles', [])
+    if roles:
+        roles_str = ', '.join(roles) if isinstance(roles, list) else str(roles)
+        parts.append(f"الأدوار: {roles_str}")
+    if story.get('goal'):
+        parts.append(f"الهدف: {story['goal']}")
+    if story.get('description'):
+        parts.append(f"الوصف: {story['description']}")
+    if story.get('acceptance_criteria'):
+        parts.append("معايير القبول:")
+        parts.append(_readable_value(story['acceptance_criteria'], indent=1))
+    if story.get('notes'):
+        parts.append(f"ملاحظات: {story['notes']}")
+    return "\n".join(parts)
+
+
+def _erp_module_to_texts(data: dict) -> list[str]:
+    """
+    Convert an ERP module JSON (with module_name + stories) into one text block
+    per story. This preserves story boundaries so chunking stays within one story.
+    """
+    module_id   = data.get('module_id', '')
+    module_name = data.get('module_name', '')
+    module_desc = data.get('description', '')
+    stories     = data.get('stories', [])
+
+    texts = []
+    for story in stories:
+        texts.append(_story_to_text(module_id, module_name, module_desc, story))
+    return texts
+
+
+def _is_erp_module(data) -> bool:
+    return isinstance(data, dict) and 'module_name' in data and 'stories' in data
 
 
 def extract_text(file_path: Path) -> str:
-    """Extract plain text from a file based on its extension."""
+    """Extract plain text from non-JSON files."""
     suffix = file_path.suffix.lower()
     content = file_path.read_bytes()
     text = ""
@@ -93,10 +146,6 @@ def extract_text(file_path: Path) -> str:
         text += f"File: {file_path.name}\n"
         text += df.to_string(index=False) + "\n\n"
         text += f"Summary:\n{df.describe().to_string()}\n"
-
-    elif suffix == '.json':
-        data = json.loads(content.decode('utf-8', errors='replace'))
-        text += _flatten_json(data) + "\n"
 
     elif suffix in ('.xlsx', '.xls'):
         df = pd.read_excel(io.BytesIO(content))
@@ -135,57 +184,72 @@ def ingest():
 
     logger.info(f"Found {len(files)} document(s): {[f.name for f in files]}")
 
-    # --- Step 1: Extract text ---
-    all_text   = ""
+    # --- Step 1: Extract texts ---
+    # Each entry is a self-contained text unit (one story, one page, etc.)
+    all_units  = []   # list of (source_label, text_str)
     successful = []
+
     for file_path in files:
         logger.info(f"  Extracting: {file_path.name}")
         try:
-            text = extract_text(file_path)
-            if text.strip():
-                all_text += f"\n\n--- {file_path.name} ---\n\n" + text
-                successful.append(file_path.name)
-                logger.info(f"    OK — {len(text):,} characters")
+            if file_path.suffix.lower() == '.json':
+                data = json.loads(file_path.read_bytes().decode('utf-8', errors='replace'))
+                if _is_erp_module(data):
+                    texts = _erp_module_to_texts(data)
+                    for i, t in enumerate(texts):
+                        if t.strip():
+                            all_units.append((f"{file_path.name}[story {i}]", t))
+                    logger.info(f"    OK — {len(texts)} stories extracted")
+                else:
+                    # Generic JSON: readable key-value (no dot-path notation)
+                    text = _readable_value(data)
+                    if text.strip():
+                        all_units.append((file_path.name, text))
+                    logger.info(f"    OK — {len(text):,} characters")
             else:
-                logger.warning(f"    No text extracted from {file_path.name} — skipping")
+                text = extract_text(file_path)
+                if text.strip():
+                    all_units.append((file_path.name, text))
+                    logger.info(f"    OK — {len(text):,} characters")
+                else:
+                    logger.warning(f"    No text extracted from {file_path.name} — skipping")
+            successful.append(file_path.name)
         except Exception as e:
             logger.error(f"    Failed: {e}")
 
-    if not all_text.strip():
+    if not all_units:
         logger.error("No text could be extracted from any file. Aborting.")
         return
 
+    logger.info(f"  Total text units: {len(all_units)}")
+
     # --- Step 2: Parent-Child Chunking ---
+    # Each unit becomes its own parent document, preserving story boundaries.
     logger.info("Applying Parent-Child Chunking...")
 
-    parent_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=PARENT_CHUNK_SIZE,
-        chunk_overlap=PARENT_CHUNK_OVERLAP,
-        length_function=len,
-        add_start_index=True,
-    )
     child_splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHILD_CHUNK_SIZE,
         chunk_overlap=CHILD_CHUNK_OVERLAP,
         length_function=len,
     )
 
-    parent_docs = parent_splitter.create_documents([all_text])
-    logger.info(f"  Created {len(parent_docs)} parent chunks (size={PARENT_CHUNK_SIZE})")
-
     parent_store = {}   # { parent_id: parent_text }
     child_docs   = []   # LangChain Documents with parent_id in metadata
 
-    for i, parent in enumerate(parent_docs):
-        parent_id = str(i)
-        parent_store[parent_id] = parent.page_content
+    parent_id_counter = 0
+    for source_label, unit_text in all_units:
+        # Each unit is its own parent (preserves story boundaries)
+        parent_id = str(parent_id_counter)
+        parent_store[parent_id] = unit_text
+        parent_id_counter += 1
 
         children = child_splitter.create_documents(
-            [parent.page_content],
-            metadatas=[{"parent_id": parent_id}]
+            [unit_text],
+            metadatas=[{"parent_id": parent_id, "source": source_label}]
         )
         child_docs.extend(children)
 
+    logger.info(f"  Created {len(parent_store)} parent units")
     logger.info(f"  Created {len(child_docs)} child chunks (size={CHILD_CHUNK_SIZE})")
 
     # --- Step 3: Save parent docstore ---
@@ -220,7 +284,7 @@ def ingest():
     logger.info("=" * 50)
     logger.info("Ingestion complete!")
     logger.info(f"  Files processed  : {len(successful)}")
-    logger.info(f"  Parent chunks    : {len(parent_docs)}  (stored in docstore.json)")
+    logger.info(f"  Parent units     : {len(parent_store)}  (stored in docstore.json)")
     logger.info(f"  Child chunks     : {len(child_docs)}  (embedded in ChromaDB)")
     logger.info(f"  Database path    : {os.path.abspath(CHROMA_DB_DIR)}")
     logger.info("You can now start the API: python chatbot_api.py")

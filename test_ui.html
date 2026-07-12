@@ -1218,6 +1218,9 @@
             msgs.scrollTop = msgs.scrollHeight;
           }
           if (data.done && botDiv) {
+            if (typeof marked !== 'undefined') {
+              botDiv.innerHTML = renderMarkdown(buffer);
+            }
             const m = document.createElement('div');
             m.className = 'meta'; m.textContent = '📄 المصدر: وثائق النظام';
             botDiv.appendChild(m);
@@ -1629,6 +1632,9 @@ ${summaryHtml ? '<div class="summary">' + summaryHtml + '</div>' : ''}
             msgs.scrollTop = msgs.scrollHeight;
           }
           if (data.done && botDiv) {
+            if (typeof marked !== 'undefined') {
+              botDiv.innerHTML = renderMarkdown(buffer);
+            }
             const m = document.createElement('div');
             m.className = 'fw-meta'; m.textContent = '📄 المصدر: وثائق النظام';
             botDiv.appendChild(m);

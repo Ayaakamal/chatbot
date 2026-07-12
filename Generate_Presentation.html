@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>مولّد عرض مساعد المشتريات الذكي</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #0a3438; color: #e0f4f4;
+         display: flex; flex-direction: column; align-items: center;
+         justify-content: center; min-height: 100vh; margin: 0; }
+  .card { background: #145055; border-radius: 16px; padding: 40px 50px;
+          text-align: center; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  h1 { font-size: 26px; margin-bottom: 8px; }
+  p  { font-size: 14px; color: #94A3B8; margin-bottom: 28px; }
+  button { background: #DA5B30; color: white; border: none; padding: 14px 36px;
+           font-size: 16px; border-radius: 8px; cursor: pointer; font-family: Arial; }
+  button:hover { background: #c44e25; }
+  #status { margin-top: 20px; font-size: 14px; color: #e0f4f4; min-height: 24px; }
+  .robot { font-size: 60px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="robot">🤖</div>
+  <h1>مساعد المشتريات الذكي</h1>
+  <p>Procurement AI Assistant — Manager Presentation<br>اضغط لتوليد ملف PowerPoint وتحميله</p>
+  <button onclick="generate()">⬇ توليد وتحميل العرض</button>
+  <div id="status"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs/dist/pptxgen.bundle.js"></script>
+<script>
+async function generate() {
+  const btn = document.querySelector('button');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  btn.textContent = '⏳ جارٍ التوليد...';
+  status.textContent = '';
+
+  try {
+    const pres = new PptxGenJS();
+    pres.layout = 'LAYOUT_16x9';
+    pres.title = 'Procurement AI Assistant';
+    pres.author = 'Ayaa Kamal';
+
+    // ── COLORS ────────────────────────────────────────────────
+    const P='145055', DK='0a3438', OR='DA5B30', LB='e0f4f4';
+    const WH='FFFFFF', TX='1E293B', MU='64748B', CB='F8FAFC';
+    const GR='22C55E';
+    const ms = () => ({type:'outer',color:'000000',blur:8,offset:2,angle:135,opacity:0.10});
+
+    function hdr(s,ar,en){
+      s.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:10,h:0.85,fill:{color:P},line:{color:P}});
+      s.addText(ar,{x:0.4,y:0,w:9.2,h:0.85,fontSize:22,bold:true,color:WH,fontFace:'Arial',align:'right',valign:'middle',margin:0});
+      if(en) s.addText(en,{x:0.4,y:0,w:9.2,h:0.85,fontSize:13,color:LB,italic:true,fontFace:'Calibri',align:'left',valign:'middle',margin:0});
+    }
+    function ftr(s){ s.addShape(pres.shapes.RECTANGLE,{x:0,y:5.425,w:10,h:0.2,fill:{color:OR},line:{color:OR}}); }
+
+    // ── SLIDE 1: TITLE ────────────────────────────────────────
+    let s = pres.addSlide();
+    s.background={color:DK};
+    s.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:0.15,h:5.625,fill:{color:OR},line:{color:OR}});
+    s.addShape(pres.shapes.OVAL,{x:7.6,y:0.8,w:2.1,h:2.1,fill:{color:'1a5a60'},line:{color:OR,width:2.5}});
+    s.addText('🤖',{x:7.6,y:0.8,w:2.1,h:2.1,fontSize:52,align:'center',valign:'middle',margin:0});
+    s.addText('مساعد المشتريات الذكي',{x:0.5,y:0.85,w:6.9,h:1.1,fontSize:36,bold:true,color:WH,fontFace:'Arial',align:'right',margin:0});
+    s.addText('نظام ذكاء اصطناعي لأتمتة عمليات المشتريات',{x:0.5,y:2.05,w:6.9,h:0.65,fontSize:17,color:LB,fontFace:'Arial',align:'right',margin:0});
+    s.addText('Procurement AI Assistant — ERP Chatbot',{x:0.5,y:2.75,w:6.9,h:0.45,fontSize:14,color:MU,italic:true,fontFace:'Calibri',align:'right',margin:0});
+    s.addShape(pres.shapes.LINE,{x:0.5,y:3.4,w:9.0,h:0,line:{color:'1e6060',width:1.5}});
+    s.addText('Ayaa Kamal   |   April 2026   |   MasterCode ERP',{x:0.5,y:3.6,w:9.0,h:0.4,fontSize:12,color:MU,fontFace:'Calibri',align:'right',margin:0});
+
+    // ── SLIDE 2: CHALLENGE ────────────────────────────────────
+    s = pres.addSlide();
+    s.background={color:WH};
+    hdr(s,'لماذا نحتاج هذا النظام؟','The Challenge');
+    ftr(s);
+    [{ar:'بحث يدوي مستمر',en:'Constant Manual Searching',desc:'الموظفون يقضون وقتاً طويلاً في البحث عن بيانات الموردين وأوامر الشراء والفواتير يدوياً داخل النظام',icon:'🔍',c:P},
+     {ar:'مهام متكررة',en:'Repetitive Tasks',desc:'التحقق من حالة أوامر الشراء والفواتير بشكل يدوي يستهلك جهداً كبيراً دون قيمة مضافة حقيقية',icon:'🔄',c:OR},
+     {ar:'صعوبة الوصول للمعلومات',en:'Slow Information Access',desc:'الإجابة على أسئلة الفريق حول سياسات وإجراءات الشراء تستغرق وقتاً طويلاً وتعطل سير العمل',icon:'📋',c:P}
+    ].forEach((c,i)=>{
+      const cx=0.35+i*3.15,cy=1.05;
+      s.addShape(pres.shapes.RECTANGLE,{x:cx,y:cy,w:3.0,h:4.1,fill:{color:CB},line:{color:'E2E8F0',width:1},shadow:ms()});
+      s.addShape(pres.shapes.RECTANGLE,{x:cx,y:cy,w:3.0,h:0.08,fill:{color:c.c},line:{color:c.c}});
+      s.addShape(pres.shapes.OVAL,{x:cx+1.0,y:cy+0.22,w:1.0,h:1.0,fill:{color:c.c},line:{color:c.c}});
+      s.addText(c.icon,{x:cx+1.0,y:cy+0.22,w:1.0,h:1.0,fontSize:26,align:'center',valign:'middle',margin:0});
+      s.addText(c.ar,{x:cx+0.1,y:cy+1.37,w:2.8,h:0.5,fontSize:15,bold:true,color:TX,fontFace:'Arial',align:'center',margin:0});
+      s.addText(c.en,{x:cx+0.1,y:cy+1.88,w:2.8,h:0.35,fontSize:10,color:MU,italic:true,fontFace:'Calibri',align:'center',margin:0});
+      s.addText(c.desc,{x:cx+0.15,y:cy+2.28,w:2.7,h:1.6,fontSize:12,color:TX,fontFace:'Arial',align:'right',wrap:true,margin:0});
+    });
+
+    // ── SLIDE 3: WHAT IS IT ───────────────────────────────────
+    s = pres.addSlide();
+    s.background={color:WH};
+    hdr(s,'ما هو المساعد الذكي للمشتريات؟','What is the Procurement Chatbot?');
+    ftr(s);
+    s.addShape(pres.shapes.RECTANGLE,{x:0.3,y:1.0,w:4.1,h:4.2,fill:{color:LB},line:{color:'B0D8D8'}});
+    s.addShape(pres.shapes.OVAL,{x:1.1,y:1.45,w:2.3,h:2.3,fill:{color:P},line:{color:P}});
+    s.addText('🤖',{x:1.1,y:1.45,w:2.3,h:2.3,fontSize:60,align:'center',valign:'middle',margin:0});
+    s.addText('مساعد ERP الذكي',{x:0.3,y:3.9,w:4.1,h:0.5,fontSize:14,bold:true,color:P,fontFace:'Arial',align:'center',margin:0});
+    s.addText('Your Smart ERP Assistant',{x:0.3,y:4.4,w:4.1,h:0.38,fontSize:11,color:MU,italic:true,fontFace:'Calibri',align:'center',margin:0});
+    [{ar:'مساعد ذكي مدمج في نظام ERP',en:'AI assistant built into your ERP system'},
+     {ar:'يفهم ويتحدث العربية بالكامل',en:'Full Arabic language support'},
+     {ar:'يجيب على أسئلتك فوراً',en:'Instant answers to your questions'},
+     {ar:'ينفذ مهام المشتريات مباشرة',en:'Executes procurement tasks directly'}
+    ].forEach((p,i)=>{
+      const py=1.05+i*1.02;
+      s.addShape(pres.shapes.OVAL,{x:8.95,y:py+0.12,w:0.45,h:0.45,fill:{color:OR},line:{color:OR}});
+      s.addText((i+1).toString(),{x:8.95,y:py+0.12,w:0.45,h:0.45,fontSize:13,bold:true,color:WH,fontFace:'Arial',align:'center',valign:'middle',margin:0});
+      s.addText(p.ar,{x:4.65,y:py,w:4.2,h:0.42,fontSize:15,bold:true,color:TX,fontFace:'Arial',align:'right',margin:0});
+      s.addText(p.en,{x:4.65,y:py+0.44,w:4.2,h:0.35,fontSize:11,color:MU,italic:true,fontFace:'Calibri',align:'right',margin:0});
+      if(i<3) s.addShape(pres.shapes.LINE,{x:4.65,y:py+0.87,w:4.7,h:0,line:{color:'E2E8F0',width:0.75}});
+    });
+
+    // ── SLIDE 4: TWO MODES ────────────────────────────────────
+    s = pres.addSlide();
+    s.background={color:WH};
+    hdr(s,'وضعان للتفاعل مع النظام','Two Interaction Modes');
+    ftr(s);
+    s.addShape(pres.shapes.RECTANGLE,{x:0.3,y:1.0,w:4.3,h:4.2,fill:{color:P},line:{color:P}});
+    s.addShape(pres.shapes.OVAL,{x:1.35,y:1.28,w:2.0,h:2.0,fill:{color:'1a6060'},line:{color:OR,width:2}});
+    s.addText('🧠',{x:1.35,y:1.28,w:2.0,h:2.0,fontSize:52,align:'center',valign:'middle',margin:0});
+    s.addText('المساعد الذكي',{x:0.3,y:3.4,w:4.3,h:0.58,fontSize:21,bold:true,color:WH,fontFace:'Arial',align:'center',margin:0});
+    s.addText('Smart Agent',{x:0.3,y:3.96,w:4.3,h:0.32,fontSize:13,color:LB,italic:true,fontFace:'Calibri',align:'center',margin:0});
+    s.addText('يتفاعل مع بيانات ERP مباشرة\nيعرض ويُنشئ ويُدير أوامر الشراء',{x:0.35,y:4.32,w:4.2,h:0.75,fontSize:12,color:LB,fontFace:'Arial',align:'center',margin:0});
+    s.addShape(pres.shapes.OVAL,{x:4.55,y:2.5,w:0.9,h:0.9,fill:{color:OR},line:{color:OR}});
+    s.addText('VS',{x:4.55,y:2.5,w:0.9,h:0.9,fontSize:15,bold:true,color:WH,fontFace:'Arial',align:'center',valign:'middle',margin:0});
+    s.addShape(pres.shapes.RECTANGLE,{x:5.4,y:1.0,w:4.3,h:4.2,fill:{color:LB},line:{color:'B0D8D8'}});
+    s.addShape(pres.shapes.OVAL,{x:6.45,y:1.28,w:2.0,h:2.0,fill:{color:P},line:{color:P}});
+    s.addText('📚',{x:6.45,y:1.28,w:2.0,h:2.0,fontSize:52,align:'center',valign:'middle',margin:0});
+    s.addText('سؤال وجواب',{x:5.4,y:3.4,w:4.3,h:0.58,fontSize:21,bold:true,color:P,fontFace:'Arial',align:'center',margin:0});
+    s.addText('Q&A Assistant',{x:5.4,y:3.96,w:4.3,h:0.32,fontSize:13,color:MU,italic:true,fontFace:'Calibri',align:'center',margin:0});
+    s.addText('يبحث في وثائق ERP المحملة\nيجيب عن أسئلة الإجراءات والسياسات',{x:5.45,y:4.32,w:4.2,h:0.75,fontSize:12,color:TX,fontFace:'Arial',align:'center',margin:0});
+
+    // ── SLIDE 5: CAPABILITIES ─────────────────────────────────
+    s = pres.addSlide();
+    s.background={color:WH};
+    hdr(s,'ماذا يستطيع المساعد أن يفعل؟','Key Capabilities');
+    ftr(s);
+    [{ar:'عرض الموردين',en:'View Suppliers',icon:'🏢',c:P},
+     {ar:'أوامر الشراء',en:'Purchase Orders',icon:'🛒',c:OR},
+     {ar:'عرض الفواتير',en:'View Invoices',icon:'📄',c:P},
+     {ar:'إنشاء أمر شراء',en:'Create New PO',icon:'➕',c:OR},
+     {ar:'تصدير PDF',en:'Export as PDF',icon:'📤',c:P},
+     {ar:'بحث في الوثائق',en:'Document Search',icon:'🔍',c:OR}
+    ].forEach((cap,i)=>{
+      const col=i%3,row=Math.floor(i/3),cx=0.3+col*3.15,cy=1.05+row*2.15;
+      s.addShape(pres.shapes.RECTANGLE,{x:cx,y:cy,w:3.0,h:1.9,fill:{color:CB},line:{color:'E2E8F0',width:1},shadow:ms()});
+      s.addShape(pres.shapes.RECTANGLE,{x:cx,y:cy,w:0.07,h:1.9,fill:{color:cap.c},line:{color:cap.c}});
+      s.addShape(pres.shapes.OVAL,{x:cx+0.2,y:cy+0.47,w:0.9,h:0.9,fill:{color:cap.c},line:{color:cap.c}});
+      s.addText(cap.icon,{x:cx+0.2,y:cy+0.47,w:0.9,h:0.9,fontSize:22,align:'center',valign:'middle',margin:0});
+      s.addText(cap.ar,{x:cx+1.25,y:cy+0.35,w:1.65,h:0.5,fontSize:14,bold:true,color:TX,fontFace:'Arial',align:'right',margin:0});
+      s.addText(cap.en,{x:cx+1.25,y:cy+0.88,w:1.65,h:0.35,fontSize:10,color:MU,italic:true,fontFace:'Calibri',align:'right',margin:0});
+    });
+
+    // ── SLIDE 6: TECH ─────────────────────────────────────────
+    s = pres.addSlide();
+    s.background={color:WH};
+    hdr(s,'التقنيات المستخدمة — بشكل مبسط','Tech at a Glance');
+    ftr(s);
+    [{ar:'ذكاء اصطناعي من Google',en:'Powered by Google Gemini AI',desc:'نموذج Gemini الذكي يفهم اللغة العربية ويجيب بدقة عالية على أسئلة الموردين وأوامر الشراء والفواتير',icon:'🤖',c:P,bg:LB,brd:'C7E8E8'},
+     {ar:'بيانات ERP مباشرة',en:'Connected to ERP Data',desc:'يصل إلى بيانات الموردين والفواتير وأوامر الشراء — الهدف القادم: ربطه بـ Microsoft Dynamics 365 الحقيقي',icon:'🗄️',c:OR,bg:'FFF8F5',brd:'FFD4B8'},
+     {ar:'عربي أولاً',en:'Arabic-First Design',desc:'مبني بالكامل للغة العربية مع دعم RTL وتصميم متوافق تماماً مع واجهة MasterCode ERP',icon:'🌐',c:P,bg:LB,brd:'C7E8E8'}
+    ].forEach((t,i)=>{
+      const cy=1.1+i*1.42;
+      s.addShape(pres.shapes.RECTANGLE,{x:0.3,y:cy,w:9.4,h:1.22,fill:{color:t.bg},line:{color:t.brd,width:1}});
+      s.addShape(pres.shapes.RECTANGLE,{x:0.3,y:cy,w:0.08,h:1.22,fill:{color:t.c},line:{color:t.c}});
+      s.addShape(pres.shapes.OVAL,{x:8.7,y:cy+0.16,w:0.9,h:0.9,fill:{color:t.c},line:{color:t.c}});
+      s.addText(t.icon,{x:8.7,y:cy+0.16,w:0.9,h:0.9,fontSize:24,align:'center',valign:'middle',margin:0});
+      s.addText(t.ar,{x:5.4,y:cy+0.1,w:3.15,h:0.48,fontSize:16,bold:true,color:TX,fontFace:'Arial',align:'right',margin:0});
+      s.addText(t.en,{x:5.4,y:cy+0.58,w:3.15,h:0.35,fontSize:11,color:MU,italic:true,fontFace:'Calibri',align:'right',margin:0});
+      s.addText(t.desc,{x:0.55,y:cy+0.1,w:4.75,h:1.0,fontSize:12,color:TX,fontFace:'Arial',align:'right',wrap:true,margin:0});
+    });
+
+    // ── SLIDE 7: STATUS ───────────────────────────────────────
+    s = pres.addSlide();
+    s.background={color:WH};
+    hdr(s,'الحالة الحالية للمشروع','Current Project Status');
+    ftr(s);
+    [{ar:'البنية الأساسية للمساعد الذكي جاهزة وتعمل',en:'Core chatbot built and fully working',done:true},
+     {ar:'دعم كامل للغة العربية',en:'Full Arabic language support',done:true},
+     {ar:'المساعد الذكي مع بيانات تجريبية (موردون، أوامر، فواتير)',en:'Smart Agent with mock ERP data',done:true},
+     {ar:'البحث في وثائق ERP (9 وحدات)',en:'Document Q&A — 9 ERP modules',done:true},
+     {ar:'تصدير أوامر الشراء كـ PDF',en:'Export Purchase Orders as PDF',done:true},
+     {ar:'الربط ببيانات Microsoft Dynamics 365',en:'Connect to real Microsoft D365 — Next Step',done:false}
+    ].forEach((item,i)=>{
+      const cy=1.05+i*0.735;
+      s.addShape(pres.shapes.RECTANGLE,{x:0.3,y:cy,w:9.4,h:0.63,fill:{color:item.done?'F0FDF4':'FFF7F5'},line:{color:item.done?'86EFAC':'FED7AA',width:1}});
+      s.addShape(pres.shapes.OVAL,{x:8.92,y:cy+0.09,w:0.44,h:0.44,fill:{color:item.done?GR:OR},line:{color:item.done?GR:OR}});
+      s.addText(item.done?'✓':'→',{x:8.92,y:cy+0.09,w:0.44,h:0.44,fontSize:14,bold:true,color:WH,fontFace:'Arial',align:'center',valign:'middle',margin:0});
+      s.addText(item.ar,{x:4.8,y:cy+0.06,w:3.95,h:0.5,fontSize:13,bold:!item.done,color:TX,fontFace:'Arial',align:'right',margin:0});
+      s.addText(item.en,{x:0.5,y:cy+0.06,w:4.15,h:0.5,fontSize:11,color:MU,italic:true,fontFace:'Calibri',align:'left',margin:0});
+    });
+
+    // ── SLIDE 8: NEXT STEPS ───────────────────────────────────
+    s = pres.addSlide();
+    s.background={color:WH};
+    hdr(s,'الخطوات القادمة','Next Steps');
+    ftr(s);
+    [{num:'01',ar:'ربط بـ Microsoft D365',en:'Connect to Microsoft Dynamics 365',desc:'استبدال البيانات التجريبية ببيانات ERP الحقيقية عبر واجهة برمجية آمنة بالتنسيق مع IT',c:P},
+     {num:'02',ar:'اختبار مع الفريق',en:'User Testing with Procurement Team',desc:'تجربة النظام مع موظفي المشتريات وجمع الملاحظات لتحسين الأداء والدقة',c:OR},
+     {num:'03',ar:'النشر الكامل والتدريب',en:'Full Deployment & Training',desc:'إطلاق النظام الكامل وتدريب فريق المشتريات للاستفادة القصوى من المساعد الذكي',c:P}
+    ].forEach((st,i)=>{
+      const cx=0.35+i*3.15,cy=1.1;
+      s.addShape(pres.shapes.RECTANGLE,{x:cx,y:cy,w:3.0,h:4.1,fill:{color:CB},line:{color:'E2E8F0',width:1},shadow:ms()});
+      s.addShape(pres.shapes.RECTANGLE,{x:cx,y:cy,w:3.0,h:0.08,fill:{color:st.c},line:{color:st.c}});
+      s.addShape(pres.shapes.OVAL,{x:cx+1.0,y:cy+0.22,w:1.0,h:1.0,fill:{color:st.c},line:{color:st.c}});
+      s.addText(st.num,{x:cx+1.0,y:cy+0.22,w:1.0,h:1.0,fontSize:24,bold:true,color:WH,fontFace:'Arial',align:'center',valign:'middle',margin:0});
+      s.addText(st.ar,{x:cx+0.1,y:cy+1.38,w:2.8,h:0.5,fontSize:15,bold:true,color:TX,fontFace:'Arial',align:'center',margin:0});
+      s.addText(st.en,{x:cx+0.1,y:cy+1.9,w:2.8,h:0.4,fontSize:10,color:MU,italic:true,fontFace:'Calibri',align:'center',margin:0});
+      s.addText(st.desc,{x:cx+0.15,y:cy+2.36,w:2.7,h:1.5,fontSize:12,color:TX,fontFace:'Arial',align:'right',wrap:true,margin:0});
+      if(i<2) s.addText('→',{x:cx+3.02,y:cy+1.6,w:0.18,h:0.5,fontSize:18,color:MU,fontFace:'Arial',align:'center',valign:'middle',margin:0});
+    });
+
+    // ── SLIDE 9: CLOSING ──────────────────────────────────────
+    s = pres.addSlide();
+    s.background={color:DK};
+    s.addShape(pres.shapes.RECTANGLE,{x:0,y:0,w:0.15,h:5.625,fill:{color:OR},line:{color:OR}});
+    s.addShape(pres.shapes.OVAL,{x:7.7,y:0.8,w:2.0,h:2.0,fill:{color:'1a5a60'},line:{color:OR,width:2.5}});
+    s.addText('🤖',{x:7.7,y:0.8,w:2.0,h:2.0,fontSize:52,align:'center',valign:'middle',margin:0});
+    s.addText('شكراً لكم',{x:0.5,y:0.82,w:7.0,h:1.0,fontSize:40,bold:true,color:WH,fontFace:'Arial',align:'right',margin:0});
+    s.addText('Thank You',{x:0.5,y:1.78,w:7.0,h:0.55,fontSize:20,color:LB,italic:true,fontFace:'Calibri',align:'right',margin:0});
+    s.addShape(pres.shapes.LINE,{x:0.5,y:2.5,w:9.0,h:0,line:{color:'1e6060',width:1.5}});
+    [{n:'2',l:'وضع تفاعلي\nModes'},{n:'8+',l:'أداة ذكية\nSmart Tools'},{n:'9',l:'وحدة موثقة\nDocumented Modules'},{n:'∞',l:'إمكانيات المستقبل\nFuture Potential'}
+    ].forEach((b,i)=>{
+      const cx=0.55+i*2.25;
+      s.addText(b.n,{x:cx,y:2.72,w:2.1,h:0.8,fontSize:34,bold:true,color:OR,fontFace:'Arial',align:'center',margin:0});
+      s.addText(b.l,{x:cx,y:3.55,w:2.1,h:0.7,fontSize:12,color:LB,fontFace:'Arial',align:'center',margin:0});
+    });
+    s.addShape(pres.shapes.LINE,{x:0.5,y:4.42,w:9.0,h:0,line:{color:'1e6060',width:1}});
+    s.addText('Ayaa Kamal   |   ayaa_kamal@mcodekw.net   |   MasterCode ERP   |   April 2026',{x:0.5,y:4.6,w:9.0,h:0.4,fontSize:12,color:MU,fontFace:'Calibri',align:'right',margin:0});
+
+    // ── DOWNLOAD ──────────────────────────────────────────────
+    await pres.writeFile({ fileName: 'Procurement_AI_Chatbot.pptx' });
+    btn.textContent = '✅ تم التحميل!';
+    btn.style.background = '#22C55E';
+    status.textContent = 'تم حفظ الملف في مجلد التنزيلات — File saved to Downloads folder';
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '⬇ حاول مجدداً';
+    status.textContent = '❌ Error: ' + e.message;
+  }
+}
+
+// Auto-generate on load
+window.addEventListener('load', () => setTimeout(generate, 800));
+</script>
+</body>
+</html>
